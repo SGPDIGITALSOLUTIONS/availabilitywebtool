@@ -12,12 +12,12 @@ interface ClinicWithStatus extends ClinicStatus {
 }
 
 export function Dashboard() {
-  // Calculate default date range (3 weeks 6 days from today)
+  // Calculate default date range (4 weeks from today)
   const getDefaultDateRange = () => {
     const today = new Date();
     const startDate = new Date(today);
     const endDate = new Date(today);
-    endDate.setDate(today.getDate() + 27); // 3 weeks 6 days (27 days) from today
+    endDate.setDate(today.getDate() + 28); // 4 weeks (28 days) from today
     
     return {
       start: startDate.toISOString().split('T')[0],
@@ -42,21 +42,30 @@ export function Dashboard() {
     if (!dateString) return null;
     
     try {
-      // Handle "Monday 16/7" format - extract just the date part
-      const dateMatch = dateString.match(/(\d{1,2})\/(\d{1,2})/);
-      if (dateMatch) {
-        const day = parseInt(dateMatch[1]);
-        const month = parseInt(dateMatch[2]);
+      // 1) Handle formats that include an explicit year first (e.g. \"Monday 5/1/2026\" or \"5/1/2026\")
+      const fullMatch = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (fullMatch) {
+        const day = parseInt(fullMatch[1], 10);
+        const month = parseInt(fullMatch[2], 10);
+        const year = parseInt(fullMatch[3], 10);
+        return new Date(year, month - 1, day); // month is 0-indexed
+      }
+
+      // 2) Handle \"Monday 16/7\" format - extract just the date part, assume current year
+      const shortMatch = dateString.match(/(\d{1,2})\/(\d{1,2})/);
+      if (shortMatch) {
+        const day = parseInt(shortMatch[1], 10);
+        const month = parseInt(shortMatch[2], 10);
         const currentYear = new Date().getFullYear();
-        return new Date(currentYear, month - 1, day); // month is 0-indexed
+        return new Date(currentYear, month - 1, day);
       }
       
-      // Handle ISO format (YYYY-MM-DD)
-      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // 3) Handle ISO format (YYYY-MM-DD)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
         return new Date(dateString);
       }
       
-      // Fallback - try to parse as-is
+      // 4) Fallback - try to parse as-is
       const parsed = new Date(dateString);
       return isNaN(parsed.getTime()) ? null : parsed;
     } catch (error) {
@@ -65,24 +74,13 @@ export function Dashboard() {
     }
   };
 
-  // Function to filter clinic data based on date range
+  // No date filtering (pass-through) – keep for future use if needed
   const filterClinicsByDateRange = useCallback((clinics: ClinicWithStatus[]) => {
-    const startDate = new Date(dateRange.start);
-    const endDate = new Date(dateRange.end);
-    
     return clinics.map(clinic => ({
-      ...clinic,
-      shifts: clinic.shifts?.filter(shift => {
-        const shiftDate = parseShiftDate(shift.date);
-        if (!shiftDate) return false;
-        
-        return shiftDate >= startDate && shiftDate <= endDate;
-      }) || []
-    })).map(clinic => ({
       ...clinic,
       computedStatus: computeClinicStatus(clinic)
     }));
-  }, [dateRange]);
+  }, []);
 
   const fetchData = useCallback(async (forceRefresh = false) => {
     try {
@@ -320,10 +318,9 @@ export function Dashboard() {
             <p className="text-sm text-blue-600 mt-1">
               💡 Click on any clinic card to view detailed schedule
             </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Showing {filteredClinicData.length} clinics with shifts in selected date range 
-              ({new Date(dateRange.start).toLocaleDateString()} - {new Date(dateRange.end).toLocaleDateString()})
-            </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Showing {filteredClinicData.length} clinics (date range disabled)
+              </p>
           </div>
           
           <div className="flex items-center space-x-4">
