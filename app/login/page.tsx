@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -32,7 +33,7 @@ export default function LoginPage() {
         return;
       }
 
-      // Redirect to dashboard on success
+      // Redirect to home page on success
       router.push('/');
       router.refresh();
     } catch (err) {
@@ -42,14 +43,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-sky from-opacity-20 to-brand-turquoise to-opacity-20 px-4" style={{ background: 'linear-gradient(to bottom right, rgba(99, 185, 232, 0.1), rgba(24, 172, 167, 0.1))' }}>
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Clinic Availability Dashboard
+        <div className="flex flex-col items-center">
+          <div className="h-16 mb-6 relative w-48">
+            <Image
+              src="/assets/Vision_Care_RGB.gif"
+              alt="Vision Care Logo"
+              width={192}
+              height={64}
+              className="object-contain"
+            />
+          </div>
+          <h2 className="text-center text-2xl font-bold text-gray-900">
+            Vision Care Reporting
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to access the dashboard
+            Sign in to access the portal
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -101,7 +111,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-azure hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-azure disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>

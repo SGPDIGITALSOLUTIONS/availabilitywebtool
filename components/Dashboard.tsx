@@ -349,7 +349,7 @@ export function Dashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-brand-azure" />
           <h2 className="text-xl font-semibold text-gray-700 mb-2">Loading Clinic Data</h2>
           <p className="text-gray-500">Fetching real-time information from all clinics...</p>
         </div>
@@ -369,12 +369,6 @@ export function Dashboard() {
             <p className="text-gray-600">
               Real-time monitoring of clinic operations and staffing levels
             </p>
-            <p className="text-sm text-blue-600 mt-1">
-              💡 Click on any clinic card to view detailed schedule
-            </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Showing {filteredClinicData.length} clinics (date range disabled)
-              </p>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -409,7 +403,7 @@ export function Dashboard() {
             <button
               onClick={handleRefresh}
               disabled={loading}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-brand-azure text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -426,12 +420,12 @@ export function Dashboard() {
         </div>
 
         {/* Guide Section */}
-        <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mb-6 p-6 bg-brand-azure bg-opacity-5 border border-brand-azure border-opacity-20 rounded-lg">
           <div className="flex items-center space-x-2 mb-4">
-            <HelpCircle className="h-5 w-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-blue-900">How the Dashboard Works</h3>
+            <HelpCircle className="h-5 w-5 text-brand-azure" />
+            <h3 className="text-lg font-semibold text-brand-azure">How the Dashboard Works</h3>
           </div>
-          <div className="space-y-4 text-sm text-blue-800">
+          <div className="space-y-4 text-sm text-gray-700">
             <div>
               <h4 className="font-medium mb-2">📅 Date Range</h4>
               <p>Default date range is always 4 weeks unless changed manually. All statistics and status calculations are based on this selected date range.</p>
@@ -504,9 +498,9 @@ export function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Assistants Required</p>
-                <p className="text-2xl font-bold text-blue-600">{totalAssistantsRequired}</p>
+                <p className="text-2xl font-bold text-brand-azure">{totalAssistantsRequired}</p>
               </div>
-              <Users className="h-8 w-8 text-blue-500" />
+              <Users className="h-8 w-8 text-brand-azure" />
             </div>
           </div>
         </div>
@@ -556,7 +550,7 @@ export function Dashboard() {
           <p className="text-gray-500 mb-4">Unable to load clinic information at this time.</p>
           <button
             onClick={handleRefresh}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-brand-azure text-white rounded-lg hover:bg-opacity-90 transition-colors"
           >
             Try Again
           </button>
@@ -576,7 +570,7 @@ export function Dashboard() {
       {loadingDetails && isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-60">
           <div className="bg-white p-6 rounded-lg shadow-lg">
-            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-600" />
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-brand-azure" />
             <p className="text-gray-700">Loading schedule details...</p>
           </div>
         </div>

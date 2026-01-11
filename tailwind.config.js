@@ -8,6 +8,19 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Vision Care Brand Colors
+        brand: {
+          azure: '#307ABF',
+          turquoise: '#18ACA7',
+          jade: '#4AB166',
+          lime: '#AFCB37',
+          sky: '#63B9E8',
+          ocean: '#006D87',
+          'deep-teal': '#008579',
+          'cadmium-green': '#2B7144',
+          'forest-green': '#00893B',
+          shadow: '#3C3C3B',
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

@@ -1,0 +1,52 @@
+{
+  "name": "Vision Care Reporting",
+  "short_name": "Vision Care",
+  "description": "Real-time clinic availability and staffing information across multiple healthcare facilities",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#307ABF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/Vision_Care_identifier_RGB (2).jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/Vision_Care_identifier_RGB (2).jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["healthcare", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View clinic availability dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/assets/Vision_Care_identifier_RGB (2).jpg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Forecasting",
+      "short_name": "Forecast",
+      "description": "View forecasting data",
+      "url": "/forecasting",
+      "icons": [
+        {
+          "src": "/assets/Vision_Care_identifier_RGB (2).jpg",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
