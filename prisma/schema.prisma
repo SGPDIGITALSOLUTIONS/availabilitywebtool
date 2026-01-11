@@ -1,0 +1,47 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ClinicCache {
+  id          String   @id @default(cuid())
+  clinicName  String   @unique
+  shifts      Json     // Array of ShiftData
+  lastUpdated DateTime @default(now())
+  lastScraped   DateTime  @default(now())
+  error       String?
+  
+  @@index([lastUpdated])
+  @@index([clinicName])
+  @@map("clinic_cache")
+}
+
+model ScrapeJob {
+  id             String    @id @default(cuid())
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+  status         String    // "running" | "completed" | "failed"
+  clinicsScraped Int       @default(0)
+  error          String?
+  
+  @@index([startedAt])
+  @@map("scrape_job")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String   // Hashed password
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([username])
+  @@map("user")
+}

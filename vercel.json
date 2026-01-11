@@ -2,12 +2,19 @@
   "functions": {
     "app/api/**": {
       "maxDuration": 30
+    },
+    "app/api/cron/**": {
+      "maxDuration": 300
     }
   },
   "crons": [
     {
       "path": "/api/health",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/scrape",
+      "schedule": "0 * * * *"
     }
   ],
   "headers": [

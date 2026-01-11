@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { ClinicStatus, ShiftData } from '@/lib/clinics';
 import { ClinicCard } from './ClinicCard';
 import { ClinicDetailsModal } from './ClinicDetailsModal';
-import { RefreshCw, AlertCircle, CheckCircle, Clock, XCircle, Activity, Eye, Users, HelpCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle, Clock, XCircle, Activity, Eye, Users, HelpCircle, LogOut } from 'lucide-react';
 
 // Define the expected clinic data structure with computed status
 interface ClinicWithStatus extends ClinicStatus {
@@ -12,6 +13,8 @@ interface ClinicWithStatus extends ClinicStatus {
 }
 
 export function Dashboard() {
+  const router = useRouter();
+  
   // Calculate default date range (4 weeks from today)
   const getDefaultDateRange = () => {
     const today = new Date();
@@ -42,7 +45,12 @@ export function Dashboard() {
     if (!dateString) return null;
     
     try {
-      // 1) Handle formats that include an explicit year first (e.g. \"Monday 5/1/2026\" or \"5/1/2026\")
+      // 1) Handle ISO format (YYYY-MM-DD) - check this first as it's unambiguous
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return new Date(dateString);
+      }
+      
+      // 2) Handle formats that include an explicit year (e.g. "Monday 5/1/2026" or "5/1/2026")
       const fullMatch = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
       if (fullMatch) {
         const day = parseInt(fullMatch[1], 10);
@@ -51,7 +59,24 @@ export function Dashboard() {
         return new Date(year, month - 1, day); // month is 0-indexed
       }
 
-      // 2) Handle \"Monday 16/7\" format - extract just the date part, assume current year
+      // 3) Handle "Day DD Month YYYY" format (e.g. "Monday 21 July 2025")
+      const dayMonthYearMatch = dateString.match(/(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)[\s\W]*(\d{1,2})[\s\W]+(january|february|march|april|may|june|july|august|september|october|november|december)[\s\W]+(\d{4})/i);
+      if (dayMonthYearMatch) {
+        const months: Record<string, number> = {
+          january: 1, february: 2, march: 3, april: 4,
+          may: 5, june: 6, july: 7, august: 8,
+          september: 9, october: 10, november: 11, december: 12
+        };
+        const day = parseInt(dayMonthYearMatch[1], 10);
+        const monthName = dayMonthYearMatch[2].toLowerCase();
+        const year = parseInt(dayMonthYearMatch[3], 10);
+        const month = months[monthName];
+        if (month) {
+          return new Date(year, month - 1, day);
+        }
+      }
+
+      // 4) Handle "Monday 16/7" format - extract just the date part, assume current year
       const shortMatch = dateString.match(/(\d{1,2})\/(\d{1,2})/);
       if (shortMatch) {
         const day = parseInt(shortMatch[1], 10);
@@ -60,12 +85,7 @@ export function Dashboard() {
         return new Date(currentYear, month - 1, day);
       }
       
-      // 3) Handle ISO format (YYYY-MM-DD)
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        return new Date(dateString);
-      }
-      
-      // 4) Fallback - try to parse as-is
+      // 5) Fallback - try to parse as-is
       const parsed = new Date(dateString);
       return isNaN(parsed.getTime()) ? null : parsed;
     } catch (error) {
@@ -74,18 +94,24 @@ export function Dashboard() {
     }
   };
 
-  // No date filtering (pass-through) – keep for future use if needed
+  // Compute status for clinics (server already filters by date range, so we just compute status)
   const filterClinicsByDateRange = useCallback((clinics: ClinicWithStatus[]) => {
-    return clinics.map(clinic => ({
-      ...clinic,
-      computedStatus: computeClinicStatus(clinic)
-    }));
+    // Server already filters by date range, so we just need to compute status and filter out clinics with no shifts
+    return clinics
+      .filter(clinic => (clinic.shifts || []).length > 0) // Only include clinics with shifts
+      .map(clinic => ({
+        ...clinic,
+        computedStatus: computeClinicStatus(clinic)
+      }));
   }, []);
 
   const fetchData = useCallback(async (forceRefresh = false) => {
     try {
       setError(null);
-      const url = forceRefresh ? '/api/clinics?force=true' : '/api/clinics';
+      // Pass date range to API for server-side filtering
+      const url = forceRefresh 
+        ? `/api/clinics?force=true&startDate=${dateRange.start}&endDate=${dateRange.end}`
+        : `/api/clinics?startDate=${dateRange.start}&endDate=${dateRange.end}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -100,6 +126,10 @@ export function Dashboard() {
         ...clinic,
         computedStatus: computeClinicStatus(clinic)
       }));
+      // #region agent log
+      const edinburghClinic = clinicsWithStatus.find((c: ClinicWithStatus) => c.clinic.toLowerCase().includes('edinburgh'));
+      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'F',location:'components/Dashboard.tsx:fetchData',message:'Edinburgh in Dashboard',data:{totalClinics:clinicsWithStatus.length,edinburghFound:!!edinburghClinic,edinburghName:edinburghClinic?.clinic,edinburghShifts:edinburghClinic?.shifts?.length||0,edinburghError:edinburghClinic?.error||null,allClinics:clinicsWithStatus.map((c: ClinicWithStatus)=>({clinic:c.clinic,shifts:c.shifts?.length||0}))},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setClinicData(clinicsWithStatus);
       setLastRefresh(new Date());
     } catch (err) {
@@ -108,14 +138,21 @@ export function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateRange]);
 
   const computeClinicStatus = (clinic: ClinicStatus): 'operational' | 'limited' | 'non-functional' | 'error' => {
+    const isEdinburgh = clinic.clinic.toLowerCase().includes('edinburgh');
     if (clinic.error) {
+      // #region agent log
+      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'E',location:'components/Dashboard.tsx:computeClinicStatus:error',message:'Edinburgh has error',data:{clinic:clinic.clinic,error:clinic.error},timestamp:Date.now()})}).catch(()=>{});}
+      // #endregion
       return 'error';
     } 
     
     if (!clinic.shifts || clinic.shifts.length === 0) {
+      // #region agent log
+      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'C',location:'components/Dashboard.tsx:computeClinicStatus:noShifts',message:'Edinburgh no shifts',data:{clinic:clinic.clinic,shiftsLength:clinic.shifts?.length||0},timestamp:Date.now()})}).catch(()=>{});}
+      // #endregion
       return 'non-functional';
     }
 
@@ -124,6 +161,9 @@ export function Dashboard() {
     
     clinic.shifts.forEach(shift => {
       const shiftDate = parseShiftDate(shift.date);
+      // #region agent log
+      if(isEdinburgh && !shiftDate){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'C',location:'components/Dashboard.tsx:computeClinicStatus:parseDate',message:'Edinburgh date parse failed',data:{clinic:clinic.clinic,rawDate:shift.date},timestamp:Date.now()})}).catch(()=>{});}
+      // #endregion
       if (!shiftDate) return;
       
       // Get week identifier (year-week)
@@ -217,9 +257,23 @@ export function Dashboard() {
     await fetchData(true); // Force refresh
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/login');
+      router.refresh();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   // Apply date filtering whenever clinic data or date range changes
   useEffect(() => {
     const filtered = filterClinicsByDateRange(clinicData);
+    // #region agent log
+    const edinburghInFiltered = filtered.find(c => c.clinic.toLowerCase().includes('edinburgh'));
+    fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'F',location:'components/Dashboard.tsx:filterEffect',message:'Edinburgh in filtered data',data:{totalFiltered:filtered.length,edinburghFound:!!edinburghInFiltered,edinburghName:edinburghInFiltered?.clinic,edinburghShifts:edinburghInFiltered?.shifts?.length||0,edinburghStatus:edinburghInFiltered?.computedStatus,allFiltered:filtered.map(c=>({clinic:c.clinic,shifts:c.shifts?.length||0,status:c.computedStatus}))},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     setFilteredClinicData(filtered);
   }, [clinicData, filterClinicsByDateRange]);
 
@@ -360,6 +414,14 @@ export function Dashboard() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </button>
+            
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
 
@@ -473,13 +535,19 @@ export function Dashboard() {
       {/* Clinic Grid */}
       {filteredClinicData.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredClinicData.map((clinic, index) => (
-            <ClinicCard 
-              key={`${clinic.clinic}-${index}`} 
-              clinicData={clinic}
-              onClick={() => handleClinicClick(clinic)}
-            />
-          ))}
+          {filteredClinicData.map((clinic, index) => {
+            // #region agent log
+            const isEdinburgh = clinic.clinic.toLowerCase().includes('edinburgh');
+            if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'F',location:'components/Dashboard.tsx:render',message:'Edinburgh rendering',data:{clinic:clinic.clinic,index,shifts:clinic.shifts?.length||0,status:clinic.computedStatus},timestamp:Date.now()})}).catch(()=>{});}
+            // #endregion
+            return (
+              <ClinicCard 
+                key={`${clinic.clinic}-${index}`} 
+                clinicData={clinic}
+                onClick={() => handleClinicClick(clinic)}
+              />
+            );
+          })}
         </div>
       ) : !loading ? (
         <div className="text-center py-12">

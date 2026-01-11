@@ -87,7 +87,8 @@ export const clinics: Record<string, Clinic> = {
     id: 'london',
     name: 'London Skylight',
     location: 'London',
-    url: 'https://vchp.my.salesforce-sites.com/rota?clinicId=7014J000000kfMy',
+    // Updated to new Skylight rota link (includes current Wed/Thu schedule)
+    url: 'https://vchp.my.salesforce-sites.com/rota?clinicId=701Nz00000i6VXf',
     timezone: 'Europe/London'
   },
   thursday: {

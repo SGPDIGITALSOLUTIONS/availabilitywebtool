@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import puppeteer from 'puppeteer';
 import { ClinicStatus, Clinic } from './clinics';
 
 export interface ShiftData {
@@ -15,39 +16,98 @@ export interface ScrapedClinicData {
 }
 
 export class ClinicScraper {
-  private readonly timeout = 10000;
+  private readonly timeout = 10000; // For regular fetch (not used with Puppeteer)
   private readonly userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
 
-  async scrapeClinic(clinic: Clinic): Promise<ScrapedClinicData> {
+  async scrapeClinic(clinic: Clinic, dateRange?: { start: Date; end: Date } | null, browser?: any): Promise<ScrapedClinicData> {
+    const isEdinburgh = clinic.name.toLowerCase().includes('edinburgh');
+    const shouldCloseBrowser = !browser; // Only close browser if we created it
     try {
       console.log(`\n🔍 Scraping ${clinic.name}...`);
       console.log(`📍 URL: ${clinic.url}`);
+      // #region agent log
+      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:start',message:'Edinburgh scrape start',data:{name:clinic.name,url:clinic.url,dateRange:dateRange ? {start:dateRange.start.toISOString(),end:dateRange.end.toISOString()} : null},timestamp:Date.now()})}).catch(()=>{});}
+      // #endregion
       
-      // Use AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-
-      const response = await fetch(clinic.url, {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': this.userAgent,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate',
-          'Connection': 'keep-alive',
-        }
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log(`✅ HTTP Response: ${response.status} ${response.statusText}`);
+      let htmlText: string;
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Use Puppeteer for all clinics to handle JavaScript-rendered content
+      console.log(`🌐 Using Puppeteer for ${clinic.name} to handle JavaScript-rendered content...`);
+      // #region agent log
+      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:puppeteerStart',message:'Edinburgh Puppeteer start',data:{clinic:clinic.name},timestamp:Date.now()})}).catch(()=>{});}
+      // #endregion
+      
+      // Create browser if not provided (for backward compatibility)
+      if (!browser) {
+        browser = await puppeteer.launch({ 
+          headless: true, 
+          args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-images',
+            '--disable-plugins',
+            '--disable-extensions'
+          ]
+        });
       }
-
-      const htmlText = await response.text();
+      
+      try {
+        const page = await browser.newPage();
+        
+        // Optimize page loading - disable images, CSS, fonts for faster loading (but keep JavaScript!)
+        await page.setRequestInterception(true);
+        page.on('request', (req: any) => {
+          const resourceType = req.resourceType();
+          if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+            req.abort();
+          } else {
+            req.continue();
+          }
+        });
+        
+        await page.setUserAgent(this.userAgent);
+        // Use 'domcontentloaded' instead of 'networkidle2' for faster loading, then wait for content
+        await page.goto(clinic.url, { waitUntil: 'domcontentloaded' });
+        // Wait for JavaScript to render dates - wait for table content to appear
+        try {
+          await page.waitForSelector('table');
+        } catch (e) {
+          // Table might not exist, continue anyway
+        }
+        // Additional wait for JavaScript to update dates
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        htmlText = await page.content();
+        await page.close(); // Close page, not browser
+        console.log(`✅ Puppeteer fetched HTML: ${htmlText.length} characters`);
+        // #region agent log
+        if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:puppeteerSuccess',message:'Edinburgh Puppeteer success',data:{clinic:clinic.name,htmlLength:htmlText.length},timestamp:Date.now()})}).catch(()=>{});}
+        // #endregion
+      } catch (error) {
+        // #region agent log
+        if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:puppeteerError',message:'Edinburgh Puppeteer error',data:{clinic:clinic.name,error:error instanceof Error ? error.message : String(error)},timestamp:Date.now()})}).catch(()=>{});}
+        // #endregion
+        throw error;
+      } finally {
+        // Only close browser if we created it
+        if (shouldCloseBrowser && browser) {
+          await browser.close();
+        }
+      }
       console.log(`📄 Content Length: ${htmlText.length} characters`);
+      // #region agent log
+      if(isEdinburgh){
+        // Extract a sample of the HTML to see what dates are actually in it
+        const dateMatches = htmlText.match(/Monday\s+\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}/gi);
+        const sampleDates = dateMatches ? dateMatches.slice(0, 5) : [];
+        // Also check for 2026 dates specifically
+        const dateMatches2026 = htmlText.match(/Monday\s+\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+2026/gi);
+        const sampleDates2026 = dateMatches2026 ? dateMatches2026.slice(0, 5) : [];
+        // Extract a sample of the actual table HTML to see the structure
+        const tableMatch = htmlText.match(/<table[^>]*>[\s\S]{0,2000}<\/table>/i);
+        const tableSample = tableMatch ? tableMatch[0].substring(0, 500) : null;
+        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:htmlContent',message:'Edinburgh HTML received',data:{htmlLength:htmlText.length,sampleDates,sampleDates2026,has2026Dates:dateMatches2026 && dateMatches2026.length > 0,tableSample},timestamp:Date.now()})}).catch(()=>{});
+      }
+      // #endregion
 
       const $ = cheerio.load(htmlText);
       
@@ -61,10 +121,13 @@ export class ClinicScraper {
       console.log(`   - Rows found: ${rowCount}`);
       console.log(`   - Cells found: ${cellCount}`);
       
-      // Extract shift data
-      const shifts = this.extractShiftData($, clinic.name);
+      // Extract shift data (with date range filtering during extraction)
+      const shifts = this.extractShiftData($, clinic.name, dateRange);
 
       console.log(`✨ Final result for ${clinic.name}: ${shifts.length} shifts extracted`);
+      // #region agent log
+      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'C',location:'lib/scraper.ts:scrapeClinic:success',message:'Edinburgh scrape success',data:{shiftsCount:shifts.length,shifts:shifts.map(s=>({date:s.date,time:s.time,roles:s.jobRoles.length}))},timestamp:Date.now()})}).catch(()=>{});}
+      // #endregion
       
       return {
         clinic: clinic.name,
@@ -76,6 +139,9 @@ export class ClinicScraper {
       console.error(`❌ Error scraping ${clinic.name}:`, error);
       console.error(`   Error type: ${error instanceof Error ? error.constructor.name : typeof error}`);
       console.error(`   Error message: ${error instanceof Error ? error.message : String(error)}`);
+      // #region agent log
+      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:error',message:'Edinburgh scrape error',data:{errorType:error instanceof Error ? error.constructor.name : typeof error,errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now()})}).catch(()=>{});}
+      // #endregion
       
       return {
         clinic: clinic.name,
@@ -86,9 +152,11 @@ export class ClinicScraper {
     }
   }
 
-  private extractShiftData($: cheerio.CheerioAPI, clinicName: string): ShiftData[] {
+  private extractShiftData($: cheerio.CheerioAPI, clinicName: string, dateRange?: { start: Date; end: Date } | null): ShiftData[] {
     const shifts: ShiftData[] = [];
     console.log(`\n🔄 Extracting shift data for ${clinicName}...`);
+    let consecutiveOutOfRange = 0; // Track consecutive shifts outside date range for early exit
+    let shouldStopProcessing = false; // Flag to stop processing rows
 
     try {
       // Narrow to tables that look like the rota (header contains "Shift Date")
@@ -97,10 +165,18 @@ export class ClinicScraper {
         return headerText.includes('shift date');
       });
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'E',location:'lib/scraper.ts:tables',message:'Tables detected',data:{clinic:clinicName,rotaTables:rotaTables.length,totalTables:$('table').length},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+
       const tablesToProcess = rotaTables.length > 0 ? rotaTables : $('table');
       if (rotaTables.length === 0) {
         console.log('⚠️  No explicit rota table found, falling back to all tables');
       }
+      // #region agent log
+      const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
+      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'B',location:'lib/scraper.ts:extractShiftData:tables',message:'Edinburgh table detection',data:{rotaTables:rotaTables.length,totalTables:$('table').length,usingFallback:rotaTables.length===0},timestamp:Date.now()})}).catch(()=>{});}
+      // #endregion
 
       tablesToProcess.each((tableIndex, table) => {
         const $table = $(table);
@@ -109,15 +185,28 @@ export class ClinicScraper {
         // Log table structure
         const tableRows = $table.find('tr').length;
         console.log(`   - Rows in table: ${tableRows}`);
+        // #region agent log
+        const headerText = $table.find('th').text().trim();
+        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'E',location:'lib/scraper.ts:tableHeader',message:'Table header text',data:{clinic:clinicName,tableIndex:tableIndex+1,header:headerText},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         
         // Process each row in the table
-        $table.find('tr').each((rowIndex, row) => {
+        // Convert to array so we can break early
+        const rows = $table.find('tr').toArray();
+        for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+          // Early exit if we've determined we're past all relevant shifts
+          if (shouldStopProcessing) {
+            console.log(`   ⏭️  Stopping row processing at row ${rowIndex + 1} (early exit triggered)`);
+            break; // Stop iterating
+          }
+          
+          const row = rows[rowIndex];
           const $row = $(row);
           const cells = $row.find('td, th');
           
           if (cells.length === 0) {
             console.log(`   ⚠️  Row ${rowIndex + 1}: No cells found`);
-            return;
+            continue;
           }
 
           console.log(`\n   🔍 Row ${rowIndex + 1} (${cells.length} cells):`);
@@ -137,12 +226,15 @@ export class ClinicScraper {
               .text()
               .replace(/\s+/g, ' ')
               .trim();
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'lib/scraper.ts:cell',message:'Cell text parsed',data:{clinic:clinicName,row:rowIndex+1,cell:cellIndex+1,text:cellText},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
             
             console.log(`      Cell ${cellIndex + 1}: "${cellText}"`);
 
-            // Extract date and time from first column or cells containing date/time
-            if (cellIndex === 0 || this.containsDateTime(cellText)) {
-              console.log(`      🕒 Checking for date/time in cell ${cellIndex + 1}...`);
+            // Extract date and time ONLY from first column (column 1)
+            if (cellIndex === 0) {
+              console.log(`      🕒 Checking for date/time in column 1 (cell ${cellIndex + 1})...`);
               
               const dateMatch = this.extractDate(cellText);
               const timeMatch = this.extractTime(cellText);
@@ -150,6 +242,10 @@ export class ClinicScraper {
               if (dateMatch) {
                 console.log(`      ✅ Date found: "${dateMatch}" (raw cell: "${cellText}")`);
                 shiftDate = dateMatch;
+                // #region agent log
+                const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
+                fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:isEdinburgh?'run-edinburgh':'run1',hypothesisId:isEdinburgh?'C':'B',location:'lib/scraper.ts:dateMatch',message:isEdinburgh?'Edinburgh date matched':'Date matched',data:{clinic:clinicName,row:rowIndex+1,cell:cellIndex+1,dateMatch,rawCell:cellText},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
               }
               if (timeMatch) {
                 console.log(`      ✅ Time found: "${timeMatch}"`);
@@ -157,7 +253,7 @@ export class ClinicScraper {
               }
               
               if (!dateMatch && !timeMatch) {
-                console.log(`      ❌ No date/time patterns matched`);
+                console.log(`      ❌ No date/time patterns matched in column 1`);
               }
             }
 
@@ -174,24 +270,45 @@ export class ClinicScraper {
             // Create a more descriptive date string that includes day name and full date
             let displayDate = shiftDate || this.getTodayDate();
 
-            // Normalize date to include a year when missing (e.g., "05/01" -> inferred year)
+            // Preserve the year from the extracted date if it's already in ISO format (YYYY-MM-DD)
+            // Only infer/force year for dates without explicit year
+            const isoWithYear = shiftDate && shiftDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
             const shortDdMm = shiftDate && shiftDate.match(/^(\d{1,2})\/(\d{1,2})$/);
             const daynameDdMm = shiftDate && shiftDate.match(/^[A-Za-z]+\s+(\d{1,2})\/(\d{1,2})$/);
+            const fullDayMonthYear = shiftDate && shiftDate.match(/^[A-Za-z]+\s+(\d{1,2})\s+[A-Za-z]+\s+(\d{4})/);
 
             let normalizedIso: string | null = null;
 
-            if (shortDdMm) {
+            if (isoWithYear) {
+              // Preserve the year from ISO format - don't override it
+              normalizedIso = shiftDate; // Already in correct format
+              // #region agent log
+              const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
+              if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'C',location:'lib/scraper.ts:normalize:preserveYear',message:'Edinburgh preserving year',data:{clinic:clinicName,row:rowIndex+1,shiftDate,normalizedIso},timestamp:Date.now()})}).catch(()=>{});}
+              // #endregion
+            } else if (shortDdMm) {
+              // Date without year - infer year intelligently
               const day = parseInt(shortDdMm[1], 10);
               const month = parseInt(shortDdMm[2], 10);
               const inferredYear = this.inferYear(month, day);
               normalizedIso = this.normalizeDate(shortDdMm[1], shortDdMm[2], inferredYear.toString());
             } else if (daynameDdMm) {
+              // Day name with partial date - infer year intelligently
               const day = parseInt(daynameDdMm[1], 10);
               const month = parseInt(daynameDdMm[2], 10);
               const inferredYear = this.inferYear(month, day);
               normalizedIso = this.normalizeDate(daynameDdMm[1], daynameDdMm[2], inferredYear.toString());
-            } else if (shiftDate && /^\d{4}-\d{2}-\d{2}$/.test(shiftDate)) {
-              normalizedIso = shiftDate;
+            } else if (fullDayMonthYear) {
+              // Full textual date with year - preserve the year from the match
+              try {
+                const year = fullDayMonthYear[3]; // Extract year from match
+                const parsed = new Date(shiftDate);
+                const month = (parsed.getMonth() + 1).toString().padStart(2, '0');
+                const day = parsed.getDate().toString().padStart(2, '0');
+                normalizedIso = `${year}-${month}-${day}`;
+              } catch {
+                normalizedIso = null;
+              }
             }
 
             if (normalizedIso) {
@@ -204,37 +321,86 @@ export class ClinicScraper {
                   year: 'numeric'
                 });
                 displayDate = `${dayName} ${shortDate}`;
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'C',location:'lib/scraper.ts:normalized',message:'Normalized ISO applied',data:{clinic:clinicName,row:rowIndex+1,normalizedIso,displayDate},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
               } catch (error) {
                 // Keep existing displayDate if formatting fails
                 console.log(`      ⚠️  Date normalization failed for ${normalizedIso}, keeping original`);
               }
             }
             
-            // Year sanity: when near year-end, require next-year dates only
-            const today = new Date();
-            const currentYear = today.getFullYear();
-            const isYearEnd = today.getMonth() >= 10; // Nov/Dec
-            const minYear = isYearEnd ? currentYear + 1 : currentYear;
-            const maxYear = currentYear + 1; // allow next year at most
-            let parsedYear: number | null = null;
+            // Drop past raw dates before adding (prevents historic rows inflating counts)
+            if (shiftDate) {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
 
-            const isoMatch = displayDate.match(/^(\d{4})-\d{2}-\d{2}$/);
-            if (isoMatch) {
-              parsedYear = parseInt(isoMatch[1], 10);
-            } else {
-              const yearMatch = displayDate.match(/(\d{4})/);
-              if (yearMatch) {
-                parsedYear = parseInt(yearMatch[1], 10);
+              // Use normalizedIso when available to reflect forced/parsed year; fallback to raw
+              const candidateDateStr = normalizedIso || shiftDate;
+              let candidateDate: Date | null = null;
+              try {
+                candidateDate = new Date(candidateDateStr);
+              } catch {
+                candidateDate = null;
               }
-            }
 
-            if (parsedYear !== null && (parsedYear < minYear || parsedYear > maxYear)) {
-              console.log(`      ⚠️  Skipping shift with out-of-range year ${parsedYear} (allowed ${minYear}-${maxYear}): "${displayDate}"`);
-              return;
+              if (candidateDate) {
+                candidateDate.setHours(0, 0, 0, 0);
+                if (candidateDate < today) {
+                  // #region agent log
+                  const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
+                  fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:isEdinburgh?'run-edinburgh':'run6',hypothesisId:isEdinburgh?'D':'J',location:'lib/scraper.ts:skipPast',message:isEdinburgh?'Edinburgh skipping past shift':'Skipping past shift',data:{clinic:clinicName,row:rowIndex+1,rawDate:shiftDate,normalizedIso,candidateDate:candidateDate.toISOString(),today:today.toISOString(),isPast:candidateDate<today},timestamp:Date.now()})}).catch(()=>{});
+                  // #endregion
+                  continue;
+                }
+              }
             }
 
             // If we have a normalized ISO, use it as the stored date; otherwise fallback to displayDate
             const finalDate = normalizedIso || displayDate;
+            
+            // Filter by date range if provided (during scraping for performance)
+            if (dateRange && finalDate) {
+              let shiftDateObj: Date | null = null;
+              try {
+                // Try to parse the final date
+                shiftDateObj = new Date(finalDate);
+                if (isNaN(shiftDateObj.getTime())) {
+                  // If parsing fails, try parsing the normalized ISO or raw date
+                  shiftDateObj = normalizedIso ? new Date(normalizedIso) : (shiftDate ? new Date(shiftDate) : null);
+                }
+              } catch {
+                shiftDateObj = null;
+              }
+              
+              if (shiftDateObj) {
+                shiftDateObj.setHours(0, 0, 0, 0);
+                // Check if shift date is within the selected range
+                if (shiftDateObj < dateRange.start || shiftDateObj > dateRange.end) {
+                  consecutiveOutOfRange++;
+                  // If we've seen 5 consecutive shifts outside the range and we're past the end date,
+                  // assume we've passed all relevant shifts and can stop processing
+                  if (shiftDateObj > dateRange.end && consecutiveOutOfRange >= 5) {
+                    console.log(`   ⏭️  Early exit: Found ${consecutiveOutOfRange} consecutive shifts after end date, stopping extraction`);
+                    shouldStopProcessing = true; // Signal to stop processing rows
+                    continue; // Skip this shift
+                  }
+                  // #region agent log
+                  const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
+                  fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:isEdinburgh?'run-edinburgh':'run5',hypothesisId:isEdinburgh?'C':'H',location:'lib/scraper.ts:dateRangeFilter',message:isEdinburgh?'Edinburgh shift filtered by date range':'Shift filtered by date range',data:{clinic:clinicName,row:rowIndex+1,finalDate,shiftDateObj:shiftDateObj.toISOString(),startDate:dateRange.start.toISOString(),endDate:dateRange.end.toISOString(),inRange:false,consecutiveOutOfRange},timestamp:Date.now()})}).catch(()=>{});
+                  // #endregion
+                  continue; // Skip this shift - outside date range
+                } else {
+                  // Reset counter when we find a shift in range
+                  consecutiveOutOfRange = 0;
+                }
+              }
+            }
+            
+            // #region agent log
+            const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
+            fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:isEdinburgh?'run-edinburgh':'run5',hypothesisId:isEdinburgh?'C':'H',location:'lib/scraper.ts:finalShift',message:isEdinburgh?'Edinburgh shift recorded':'Shift recorded',data:{clinic:clinicName,row:rowIndex+1,rawDate:shiftDate||null,rawTime:shiftTime||null,finalDate,shiftTime,jobRoles},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
             
             const shift = {
               // Store ISO when available so API consumers get an unambiguous date
@@ -247,7 +413,7 @@ export class ClinicScraper {
           } else {
             console.log(`      ⚠️  Row skipped - insufficient data (date/time: ${!!(shiftDate || shiftTime)}, roles: ${jobRoles.length})`);
           }
-        });
+        }
       });
 
     } catch (error) {
@@ -255,6 +421,10 @@ export class ClinicScraper {
     }
 
     console.log(`\n📊 Summary for ${clinicName}: ${shifts.length} shifts extracted`);
+    const uniqueDates = Array.from(new Set(shifts.map(s => s.date)));
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run6',hypothesisId:'I',location:'lib/scraper.ts:clinicSummary',message:'Clinic shifts summary',data:{clinic:clinicName,shiftCount:shifts.length,uniqueDates:uniqueDates.length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     shifts.forEach((shift, index) => {
       console.log(`   ${index + 1}. ${shift.date} ${shift.time} - [${shift.jobRoles.join(', ')}]`);
     });
@@ -551,18 +721,35 @@ export class ClinicScraper {
     return new Date().toISOString().split('T')[0];
   }
 
-  async scrapeAllClinics(clinics: Clinic[]): Promise<ScrapedClinicData[]> {
+  async scrapeAllClinics(clinics: Clinic[], dateRange?: { start: Date; end: Date } | null): Promise<ScrapedClinicData[]> {
     console.log(`\n🚀 Starting to scrape ${clinics.length} clinics in parallel...`);
     console.log(`📋 Clinics to scrape: ${clinics.map(c => c.name).join(', ')}`);
+    if (dateRange) {
+      console.log(`📅 Filtering shifts to date range: ${dateRange.start.toISOString().split('T')[0]} to ${dateRange.end.toISOString().split('T')[0]}`);
+    }
     
-    // Process all clinics in parallel for better performance
-    const promises = clinics.map(clinic => {
-      console.log(`🔄 Queuing scrape for ${clinic.name}`);
-      return this.scrapeClinic(clinic);
+    // Create a single browser instance to reuse across all clinics for better performance
+    console.log(`🌐 Launching shared Puppeteer browser...`);
+    const browser = await puppeteer.launch({ 
+      headless: true, 
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-images',
+        '--disable-plugins',
+        '--disable-extensions'
+      ]
     });
     
-    console.log(`⏳ Waiting for all ${promises.length} scrape operations to complete...`);
-    const results = await Promise.allSettled(promises);
+    try {
+      // Process all clinics in parallel, reusing the same browser
+      const promises = clinics.map(clinic => {
+        console.log(`🔄 Queuing scrape for ${clinic.name}`);
+        return this.scrapeClinic(clinic, dateRange, browser);
+      });
+      
+      console.log(`⏳ Waiting for all ${promises.length} scrape operations to complete...`);
+      const results = await Promise.allSettled(promises);
     
     const finalResults = results.map((result, index) => {
       if (result.status === 'fulfilled') {
@@ -579,15 +766,20 @@ export class ClinicScraper {
       }
     });
 
-    console.log(`\n🎯 Scraping complete! Results summary:`);
-    finalResults.forEach(result => {
-      if (result.error) {
-        console.log(`   ❌ ${result.clinic}: ERROR - ${result.error}`);
-      } else {
-        console.log(`   ✅ ${result.clinic}: ${result.shifts.length} shifts`);
-      }
-    });
-    
-    return finalResults;
+      console.log(`\n🎯 Scraping complete! Results summary:`);
+      finalResults.forEach(result => {
+        if (result.error) {
+          console.log(`   ❌ ${result.clinic}: ERROR - ${result.error}`);
+        } else {
+          console.log(`   ✅ ${result.clinic}: ${result.shifts.length} shifts`);
+        }
+      });
+      
+      return finalResults;
+    } finally {
+      // Always close the shared browser
+      await browser.close();
+      console.log(`🔒 Shared browser closed`);
+    }
   }
 } 

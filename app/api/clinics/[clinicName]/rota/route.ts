@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server';
 import { getAllClinics } from '@/lib/clinics';
 import { ClinicScraper } from '@/lib/scraper';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(
   request: Request,
   { params }: { params: { clinicName: string } }
 ) {
   try {
+    // Check authentication
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const clinicName = decodeURIComponent(params.clinicName);
     console.log(`\n🌐 API /clinics/${clinicName}/rota called at ${new Date().toISOString()}`);
     
