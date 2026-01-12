@@ -1,5 +1,7 @@
 import * as cheerio from 'cheerio';
 import puppeteer from 'puppeteer';
+import puppeteerCore from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { ClinicStatus, Clinic } from './clinics';
 
 export interface ShiftData {
@@ -39,16 +41,41 @@ export class ClinicScraper {
       
       // Create browser if not provided (for backward compatibility)
       if (!browser) {
-        browser = await puppeteer.launch({ 
-          headless: true, 
-          args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-images',
-            '--disable-plugins',
-            '--disable-extensions'
-          ]
-        });
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeClinic:beforeBrowserLaunch',message:'Before browser launch',data:{isVercel:!!process.env.VERCEL,clinic:clinic.name},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        try {
+          // Use Vercel-compatible Puppeteer on Vercel, regular Puppeteer locally
+          if (process.env.VERCEL) {
+            // Configure Chromium for Vercel
+            browser = await puppeteerCore.launch({
+              args: chromium.args,
+              defaultViewport: chromium.defaultViewport,
+              executablePath: await chromium.executablePath(),
+              headless: chromium.headless,
+            });
+          } else {
+            // Local development - use regular Puppeteer
+            browser = await puppeteer.launch({ 
+              headless: true, 
+              args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox',
+                '--disable-images',
+                '--disable-plugins',
+                '--disable-extensions'
+              ]
+            });
+          }
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeClinic:browserLaunchSuccess',message:'Browser launch success',data:{clinic:clinic.name,isVercel:!!process.env.VERCEL},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+        } catch (launchError) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeClinic:browserLaunchError',message:'Browser launch error',data:{clinic:clinic.name,isVercel:!!process.env.VERCEL,errorType:launchError instanceof Error ? launchError.constructor.name : typeof launchError,errorMessage:launchError instanceof Error ? launchError.message : String(launchError),errorStack:launchError instanceof Error ? launchError.stack : null},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          throw launchError;
+        }
       }
       
       try {
@@ -730,16 +757,42 @@ export class ClinicScraper {
     
     // Create a single browser instance to reuse across all clinics for better performance
     console.log(`🌐 Launching shared Puppeteer browser...`);
-    const browser = await puppeteer.launch({ 
-      headless: true, 
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox',
-        '--disable-images',
-        '--disable-plugins',
-        '--disable-extensions'
-      ]
-    });
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeAllClinics:beforeBrowserLaunch',message:'Before shared browser launch',data:{isVercel:!!process.env.VERCEL,clinicCount:clinics.length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    let browser;
+    try {
+      // Use Vercel-compatible Puppeteer on Vercel, regular Puppeteer locally
+      if (process.env.VERCEL) {
+        // Configure Chromium for Vercel
+        browser = await puppeteerCore.launch({
+          args: chromium.args,
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+        });
+      } else {
+        // Local development - use regular Puppeteer
+        browser = await puppeteer.launch({ 
+          headless: true, 
+          args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-images',
+            '--disable-plugins',
+            '--disable-extensions'
+          ]
+        });
+      }
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeAllClinics:browserLaunchSuccess',message:'Shared browser launch success',data:{isVercel:!!process.env.VERCEL},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+    } catch (launchError) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeAllClinics:browserLaunchError',message:'Shared browser launch error',data:{isVercel:!!process.env.VERCEL,errorType:launchError instanceof Error ? launchError.constructor.name : typeof launchError,errorMessage:launchError instanceof Error ? launchError.message : String(launchError),errorStack:launchError instanceof Error ? launchError.stack : null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      throw launchError;
+    }
     
     try {
       // Process all clinics in parallel, reusing the same browser
