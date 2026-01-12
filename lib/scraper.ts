@@ -89,8 +89,16 @@ export class ClinicScraper {
         } catch (launchError) {
           // #region agent log
           fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeClinic:browserLaunchError',message:'Browser launch error',data:{clinic:clinic.name,isVercel:!!process.env.VERCEL,errorType:launchError instanceof Error ? launchError.constructor.name : typeof launchError,errorMessage:launchError instanceof Error ? launchError.message : String(launchError),errorStack:launchError instanceof Error ? launchError.stack : null},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
-          throw launchError;
+      // #endregion
+      const errorMsg = launchError instanceof Error ? launchError.message : String(launchError);
+      console.error(`❌ [Scraper] Browser launch failed for ${clinic.name}:`, {
+        error: errorMsg,
+        clinic: clinic.name,
+        isVercel: !!process.env.VERCEL,
+        nodeVersion: process.version,
+        timestamp: new Date().toISOString()
+      });
+      throw launchError;
         }
       }
       

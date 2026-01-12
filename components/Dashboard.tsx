@@ -112,13 +112,26 @@ export function Dashboard() {
       const url = forceRefresh 
         ? `/api/clinics?force=true&startDate=${dateRange.start}&endDate=${dateRange.end}`
         : `/api/clinics?startDate=${dateRange.start}&endDate=${dateRange.end}`;
+      console.log(`🔍 [Dashboard] Fetching data from: ${url}`);
       const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`❌ [Dashboard] HTTP error!`, {
+          status: response.status,
+          statusText: response.statusText,
+          url,
+          errorData
+        });
+        throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log(`✅ [Dashboard] Data received:`, {
+        clinicCount: data.clinics?.length || 0,
+        cached: data.cached || false,
+        lastUpdated: data.lastUpdated
+      });
       // Handle new API response structure
       const clinics = data.clinics || data;
       // Add computed status to each clinic
@@ -133,8 +146,21 @@ export function Dashboard() {
       setClinicData(clinicsWithStatus);
       setLastRefresh(new Date());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch clinic data');
-      console.error('Error fetching clinic data:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch clinic data';
+      setError(errorMessage);
+      console.error('❌ [Dashboard] Error fetching clinic data:', {
+        error: err,
+        message: errorMessage,
+        url: forceRefresh 
+          ? `/api/clinics?force=true&startDate=${dateRange.start}&endDate=${dateRange.end}`
+          : `/api/clinics?startDate=${dateRange.start}&endDate=${dateRange.end}`,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Try to get more details if it's a Response error
+      if (err instanceof Error && err.message.includes('HTTP error')) {
+        console.error('❌ [Dashboard] This appears to be an HTTP error. Check the Network tab for response details.');
+      }
     } finally {
       setLoading(false);
     }

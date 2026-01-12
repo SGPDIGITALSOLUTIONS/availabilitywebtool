@@ -8,13 +8,26 @@ export async function GET(request: Request) {
   fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'A',location:'app/api/cron/scrape/route.ts:GET:entry',message:'Cron endpoint entry',data:{hasAuthHeader:!!request.headers.get('authorization'),hasCronSecret:!!process.env.CRON_SECRET,vercelEnv:process.env.VERCEL,nodeEnv:process.env.NODE_ENV},timestamp:Date.now()})}).catch(()=>{});
   // #endregion
   try {
-    // Verify this is a cron request (optional but recommended)
+    // Authentication is optional - only check if secrets are explicitly set
+    // This allows the endpoint to work without authentication for easier debugging
     const authHeader = request.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'A',location:'app/api/cron/scrape/route.ts:GET:unauthorized',message:'Unauthorized request',data:{},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const vercelCronSecret = process.env.VERCEL_CRON_SECRET;
+    const cronSecret = process.env.CRON_SECRET;
+    
+    // Only enforce authentication if a secret is explicitly set
+    if (vercelCronSecret || cronSecret) {
+      const expectedSecret = vercelCronSecret || cronSecret;
+      if (authHeader !== `Bearer ${expectedSecret}`) {
+        return NextResponse.json({ 
+          error: 'Unauthorized',
+          debug: {
+            hasAuthHeader: !!authHeader,
+            hasVercelSecret: !!vercelCronSecret,
+            hasCronSecret: !!cronSecret,
+            isVercel: !!process.env.VERCEL
+          }
+        }, { status: 401 });
+      }
     }
 
     console.log(`\n⏰ Cron job started at ${new Date().toISOString()}`);
@@ -118,26 +131,40 @@ export async function GET(request: Request) {
       });
 
       console.error(`❌ Cron job failed:`, error);
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Scraping failed',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        },
-        { status: 500 }
-      );
+      const errorDetails = {
+        success: false,
+        error: 'Scraping failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        debug: {
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          errorStack: error instanceof Error ? error.stack : null,
+          isVercel: !!process.env.VERCEL,
+          hasDatabaseUrl: !!process.env.DATABASE_URL,
+          nodeVersion: process.version,
+          timestamp: new Date().toISOString()
+        }
+      };
+      console.error('❌ Full error details:', JSON.stringify(errorDetails, null, 2));
+      return NextResponse.json(errorDetails, { status: 500 });
     }
   } catch (error) {
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'A',location:'app/api/cron/scrape/route.ts:GET:outerError',message:'Outer error caught',data:{errorType:error instanceof Error ? error.constructor.name : typeof error,errorMessage:error instanceof Error ? error.message : String(error),errorStack:error instanceof Error ? error.stack : null},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
     console.error(`❌ Cron endpoint error:`, error);
-    return NextResponse.json(
-      {
-        error: 'Failed to process cron job',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    const errorDetails = {
+      error: 'Failed to process cron job',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      debug: {
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        errorStack: error instanceof Error ? error.stack : null,
+        isVercel: !!process.env.VERCEL,
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        nodeVersion: process.version,
+        timestamp: new Date().toISOString()
+      }
+    };
+    console.error('❌ Full error details:', JSON.stringify(errorDetails, null, 2));
+    return NextResponse.json(errorDetails, { status: 500 });
   }
 }

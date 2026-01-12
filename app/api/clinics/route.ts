@@ -136,14 +136,22 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error(`❌ API /clinics error:`, error);
     console.error(`   Error type: ${error instanceof Error ? error.constructor.name : typeof error}`);
-
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch clinic data',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    
+    const errorDetails = {
+      error: 'Failed to fetch clinic data',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      debug: {
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        errorStack: error instanceof Error ? error.stack?.split('\n').slice(0, 5).join('\n') : null,
+        isVercel: !!process.env.VERCEL,
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        nodeVersion: process.version,
+        timestamp: new Date().toISOString()
+      }
+    };
+    console.error('❌ Full error details:', JSON.stringify(errorDetails, null, 2));
+    
+    return NextResponse.json(errorDetails, { status: 500 });
   }
 }
 
