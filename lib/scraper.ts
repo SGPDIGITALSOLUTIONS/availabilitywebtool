@@ -50,20 +50,26 @@ export class ClinicScraper {
         const chromium = await import('@sparticuz/chromium');
         
         console.log('🔧 [Scraper] Configuring Chromium for Vercel (shared browser)...');
-        console.log('🔧 [Scraper] Chromium module:', {
+        console.log('🔧 [Scraper] Environment check:', {
+          isVercel: !!process.env.VERCEL,
+          nodeVersion: process.version,
+          awsLambdaRuntime: process.env.AWS_LAMBDA_JS_RUNTIME || 'NOT SET',
           hasChromium: !!chromium.default,
           hasSetGraphicsMode: 'setGraphicsMode' in chromium.default
         });
         
-        // Set graphics mode to false for serverless (MUST be set before executablePath)
+        // IMPORTANT: Set graphics mode to false BEFORE getting executable path
+        // This is critical for @sparticuz/chromium to work in serverless
         chromium.default.setGraphicsMode = false;
         console.log('🔧 [Scraper] Set graphics mode to false');
         
         const executablePath = await chromium.default.executablePath();
-        console.log('🔧 [Scraper] Got executable path:', executablePath?.substring(0, 50) + '...');
+        console.log('🔧 [Scraper] Got executable path:', executablePath?.substring(0, 80) + '...');
         console.log('🔧 [Scraper] Chromium args count:', chromium.default.args?.length || 0);
+        console.log('🔧 [Scraper] Chromium args (first 5):', chromium.default.args?.slice(0, 5));
         
         // Configure Chromium for Vercel with additional args for serverless
+        // These args help Chromium work in Lambda/serverless environments
         const launchArgs = [
           ...chromium.default.args,
           '--disable-gpu',
@@ -71,9 +77,17 @@ export class ClinicScraper {
           '--disable-software-rasterizer',
           '--no-sandbox',
           '--disable-setuid-sandbox',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process',
         ];
         
         console.log('🔧 [Scraper] Launching shared browser with', launchArgs.length, 'args');
+        console.log('🔧 [Scraper] Launch config:', {
+          executablePath: executablePath?.substring(0, 50) + '...',
+          headless: chromium.default.headless,
+          argsCount: launchArgs.length
+        });
+        
         browser = await puppeteerCore.launch({
           args: launchArgs,
           defaultViewport: chromium.default.defaultViewport,
@@ -804,20 +818,26 @@ export class ClinicScraper {
             const chromium = await import('@sparticuz/chromium');
             
             console.log('🔧 [Scraper] Configuring Chromium for Vercel...');
-            console.log('🔧 [Scraper] Chromium module:', {
+            console.log('🔧 [Scraper] Environment check:', {
+              isVercel: !!process.env.VERCEL,
+              nodeVersion: process.version,
+              awsLambdaRuntime: process.env.AWS_LAMBDA_JS_RUNTIME || 'NOT SET',
               hasChromium: !!chromium.default,
               hasSetGraphicsMode: 'setGraphicsMode' in chromium.default
             });
             
-            // Set graphics mode to false for serverless (MUST be set before executablePath)
+            // IMPORTANT: Set graphics mode to false BEFORE getting executable path
+            // This is critical for @sparticuz/chromium to work in serverless
             chromium.default.setGraphicsMode = false;
             console.log('🔧 [Scraper] Set graphics mode to false');
             
             const executablePath = await chromium.default.executablePath();
-            console.log('🔧 [Scraper] Got executable path:', executablePath?.substring(0, 50) + '...');
+            console.log('🔧 [Scraper] Got executable path:', executablePath?.substring(0, 80) + '...');
             console.log('🔧 [Scraper] Chromium args count:', chromium.default.args?.length || 0);
+            console.log('🔧 [Scraper] Chromium args (first 5):', chromium.default.args?.slice(0, 5));
             
             // Configure Chromium for Vercel with additional args for serverless
+            // These args help Chromium work in Lambda/serverless environments
             const launchArgs = [
               ...chromium.default.args,
               '--disable-gpu',
@@ -825,9 +845,17 @@ export class ClinicScraper {
               '--disable-software-rasterizer',
               '--no-sandbox',
               '--disable-setuid-sandbox',
+              '--disable-web-security',
+              '--disable-features=IsolateOrigins,site-per-process',
             ];
             
             console.log('🔧 [Scraper] Launching browser with', launchArgs.length, 'args');
+            console.log('🔧 [Scraper] Launch config:', {
+              executablePath: executablePath?.substring(0, 50) + '...',
+              headless: chromium.default.headless,
+              argsCount: launchArgs.length
+            });
+            
             browser = await puppeteerCore.launch({
               args: launchArgs,
               defaultViewport: chromium.default.defaultViewport,

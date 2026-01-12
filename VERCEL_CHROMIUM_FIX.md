@@ -8,7 +8,7 @@ Failed to launch the browser process: Code: 127
 stderr: /tmp/chromium: error while loading shared libraries: libnss3.so: cannot open shared object file: No such file or directory
 ```
 
-This happens because Vercel's serverless environment doesn't have all the required system libraries for Chromium.
+This happens because Vercel's serverless environment doesn't have all the required system libraries for Chromium, even though you're using Node.js 22.
 
 ## The Solution
 
@@ -24,9 +24,31 @@ This happens because Vercel's serverless environment doesn't have all the requir
 6. Click **Save**
 7. **Redeploy your project** (this is critical!)
 
-### Step 2: Verify the Fix
+### Step 2: Verify the Environment Variable is Set
 
-After redeploying, the error should be resolved. The `nodejs22.x` runtime includes the necessary system libraries that Chromium needs.
+After redeploying, check the error response in your browser console. You should see:
+```json
+{
+  "debug": {
+    "awsLambdaRuntime": "nodejs22.x",  // Should NOT say "NOT SET"
+    ...
+  }
+}
+```
+
+If it says `"NOT SET"`, the environment variable wasn't applied correctly. Try:
+- Double-check the variable name is exactly `AWS_LAMBDA_JS_RUNTIME` (case-sensitive)
+- Make sure you selected all environments
+- Try redeploying again
+- Check Vercel logs to see if the variable is being read
+
+### Step 3: Alternative - Check Vercel Function Logs
+
+If the environment variable is set but still not working:
+1. Go to Vercel Dashboard → Your Project → Functions
+2. Click on a failed function execution
+3. Check the logs for the `🔧 [Scraper] Environment check:` log
+4. Verify `awsLambdaRuntime` shows `nodejs22.x`
 
 ## Why This Works
 

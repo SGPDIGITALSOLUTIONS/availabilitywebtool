@@ -146,6 +146,7 @@ export async function GET(request: Request) {
         isVercel: !!process.env.VERCEL,
         hasDatabaseUrl: !!process.env.DATABASE_URL,
         nodeVersion: process.version,
+        awsLambdaRuntime: process.env.AWS_LAMBDA_JS_RUNTIME || 'NOT SET - THIS MAY BE THE ISSUE!',
         timestamp: new Date().toISOString()
       }
     };
