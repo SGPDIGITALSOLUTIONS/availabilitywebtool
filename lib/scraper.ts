@@ -1,7 +1,5 @@
 import * as cheerio from 'cheerio';
 import puppeteer from 'puppeteer';
-import puppeteerCore from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
 import { ClinicStatus, Clinic } from './clinics';
 
 export interface ShiftData {
@@ -47,12 +45,15 @@ export class ClinicScraper {
         try {
           // Use Vercel-compatible Puppeteer on Vercel, regular Puppeteer locally
           if (process.env.VERCEL) {
+            // Dynamic import to avoid webpack parsing issues with private class fields
+            const puppeteerCore = (await import('puppeteer-core')).default;
+            const chromium = await import('@sparticuz/chromium');
             // Configure Chromium for Vercel
             browser = await puppeteerCore.launch({
-              args: chromium.args,
-              defaultViewport: chromium.defaultViewport,
-              executablePath: await chromium.executablePath(),
-              headless: chromium.headless,
+              args: chromium.default.args,
+              defaultViewport: chromium.default.defaultViewport,
+              executablePath: await chromium.default.executablePath(),
+              headless: chromium.default.headless,
             });
           } else {
             // Local development - use regular Puppeteer
@@ -764,12 +765,15 @@ export class ClinicScraper {
     try {
       // Use Vercel-compatible Puppeteer on Vercel, regular Puppeteer locally
       if (process.env.VERCEL) {
+        // Dynamic import to avoid webpack parsing issues with private class fields
+        const puppeteerCore = (await import('puppeteer-core')).default;
+        const chromium = await import('@sparticuz/chromium');
         // Configure Chromium for Vercel
         browser = await puppeteerCore.launch({
-          args: chromium.args,
-          defaultViewport: chromium.defaultViewport,
-          executablePath: await chromium.executablePath(),
-          headless: chromium.headless,
+          args: chromium.default.args,
+          defaultViewport: chromium.default.defaultViewport,
+          executablePath: await chromium.default.executablePath(),
+          headless: chromium.default.headless,
         });
       } else {
         // Local development - use regular Puppeteer

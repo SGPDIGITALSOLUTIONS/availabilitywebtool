@@ -19,6 +19,11 @@ const nextConfig = {
       config.externals.push({
         'undici': 'commonjs undici'
       });
+      
+      // Externalize puppeteer-core to avoid webpack parsing private class fields
+      // It will be available at runtime in node_modules
+      config.externals.push('puppeteer-core');
+      config.externals.push('@sparticuz/chromium');
     }
     
     // Handle node modules that use private fields
