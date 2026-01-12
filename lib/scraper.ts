@@ -48,28 +48,39 @@ export class ClinicScraper {
         // Dynamic import to avoid webpack parsing issues with private class fields
         const puppeteerCore = (await import('puppeteer-core')).default;
         const chromium = await import('@sparticuz/chromium');
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-chromium-shared',hypothesisId:'B',location:'lib/scraper.ts:scrapeAllClinics:beforeChromiumConfig',message:'Before Chromium config (shared browser)',data:{hasChromium:!!chromium.default,hasSetGraphicsMode:'setGraphicsMode' in chromium.default},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        // Set graphics mode to false for serverless (required for @sparticuz/chromium)
+        
+        console.log('🔧 [Scraper] Configuring Chromium for Vercel (shared browser)...');
+        console.log('🔧 [Scraper] Chromium module:', {
+          hasChromium: !!chromium.default,
+          hasSetGraphicsMode: 'setGraphicsMode' in chromium.default
+        });
+        
+        // Set graphics mode to false for serverless (MUST be set before executablePath)
         chromium.default.setGraphicsMode = false;
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-chromium-shared',hypothesisId:'B',location:'lib/scraper.ts:scrapeAllClinics:afterSetGraphicsMode',message:'After setGraphicsMode (shared browser)',data:{},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
+        console.log('🔧 [Scraper] Set graphics mode to false');
+        
         const executablePath = await chromium.default.executablePath();
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-chromium-shared',hypothesisId:'B',location:'lib/scraper.ts:scrapeAllClinics:gotExecutablePath',message:'Got executable path (shared browser)',data:{executablePath:executablePath || 'null',argsLength:chromium.default.args?.length || 0},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        // Configure Chromium for Vercel
+        console.log('🔧 [Scraper] Got executable path:', executablePath?.substring(0, 50) + '...');
+        console.log('🔧 [Scraper] Chromium args count:', chromium.default.args?.length || 0);
+        
+        // Configure Chromium for Vercel with additional args for serverless
+        const launchArgs = [
+          ...chromium.default.args,
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+          '--disable-software-rasterizer',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+        ];
+        
+        console.log('🔧 [Scraper] Launching shared browser with', launchArgs.length, 'args');
         browser = await puppeteerCore.launch({
-          args: chromium.default.args,
+          args: launchArgs,
           defaultViewport: chromium.default.defaultViewport,
           executablePath: executablePath,
           headless: chromium.default.headless,
         });
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-chromium-shared',hypothesisId:'B',location:'lib/scraper.ts:scrapeAllClinics:browserLaunched',message:'Shared browser launched successfully',data:{},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
+        console.log('✅ [Scraper] Shared browser launched successfully');
           } else {
             // Local development - use regular Puppeteer
             browser = await puppeteer.launch({ 
@@ -786,33 +797,44 @@ export class ClinicScraper {
     // #endregion
     let browser;
     try {
-      // Use Vercel-compatible Puppeteer on Vercel, regular Puppeteer locally
-      if (process.env.VERCEL) {
-        // Dynamic import to avoid webpack parsing issues with private class fields
-        const puppeteerCore = (await import('puppeteer-core')).default;
-        const chromium = await import('@sparticuz/chromium');
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-chromium',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:beforeChromiumConfig',message:'Before Chromium config',data:{hasChromium:!!chromium.default,hasSetGraphicsMode:'setGraphicsMode' in chromium.default},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        // Set graphics mode to false for serverless (required for @sparticuz/chromium)
-        chromium.default.setGraphicsMode = false;
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-chromium',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:afterSetGraphicsMode',message:'After setGraphicsMode',data:{},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        const executablePath = await chromium.default.executablePath();
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-chromium',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:gotExecutablePath',message:'Got executable path',data:{executablePath:executablePath || 'null',argsLength:chromium.default.args?.length || 0},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        // Configure Chromium for Vercel
-        browser = await puppeteerCore.launch({
-          args: chromium.default.args,
-          defaultViewport: chromium.default.defaultViewport,
-          executablePath: executablePath,
-          headless: chromium.default.headless,
-        });
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-chromium',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:browserLaunched',message:'Browser launched successfully',data:{},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
+          // Use Vercel-compatible Puppeteer on Vercel, regular Puppeteer locally
+          if (process.env.VERCEL) {
+            // Dynamic import to avoid webpack parsing issues with private class fields
+            const puppeteerCore = (await import('puppeteer-core')).default;
+            const chromium = await import('@sparticuz/chromium');
+            
+            console.log('🔧 [Scraper] Configuring Chromium for Vercel...');
+            console.log('🔧 [Scraper] Chromium module:', {
+              hasChromium: !!chromium.default,
+              hasSetGraphicsMode: 'setGraphicsMode' in chromium.default
+            });
+            
+            // Set graphics mode to false for serverless (MUST be set before executablePath)
+            chromium.default.setGraphicsMode = false;
+            console.log('🔧 [Scraper] Set graphics mode to false');
+            
+            const executablePath = await chromium.default.executablePath();
+            console.log('🔧 [Scraper] Got executable path:', executablePath?.substring(0, 50) + '...');
+            console.log('🔧 [Scraper] Chromium args count:', chromium.default.args?.length || 0);
+            
+            // Configure Chromium for Vercel with additional args for serverless
+            const launchArgs = [
+              ...chromium.default.args,
+              '--disable-gpu',
+              '--disable-dev-shm-usage',
+              '--disable-software-rasterizer',
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+            ];
+            
+            console.log('🔧 [Scraper] Launching browser with', launchArgs.length, 'args');
+            browser = await puppeteerCore.launch({
+              args: launchArgs,
+              defaultViewport: chromium.default.defaultViewport,
+              executablePath: executablePath,
+              headless: chromium.default.headless,
+            });
+            console.log('✅ [Scraper] Browser launched successfully');
       } else {
         // Local development - use regular Puppeteer
         browser = await puppeteer.launch({ 
