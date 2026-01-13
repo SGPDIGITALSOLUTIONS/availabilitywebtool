@@ -24,14 +24,14 @@ export function ClinicDetailsModal({ clinic, isOpen, onClose }: ClinicDetailsMod
   const statusIcon = getStatusIcon(status);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <MapPin className="h-6 w-6 text-gray-500" />
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">{clinic.clinic}</h2>
-              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${statusColorClass} mt-2`}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] md:max-h-[90vh] overflow-hidden m-2 md:m-0">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-2 md:space-x-3 min-w-0 flex-1">
+            <MapPin className="h-5 w-5 md:h-6 md:w-6 text-gray-500 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg md:text-2xl font-bold text-gray-900 truncate">{clinic.clinic}</h2>
+              <div className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium border ${statusColorClass} mt-2`}>
                 <span className="mr-1">{statusIcon}</span>
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </div>
@@ -39,18 +39,19 @@ export function ClinicDetailsModal({ clinic, isOpen, onClose }: ClinicDetailsMod
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Close"
           >
             <X className="h-6 w-6 text-gray-500" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <div className="p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-120px)] md:max-h-[calc(90vh-120px)]">
 
-          <div className="bg-gray-50 rounded-lg p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <Calendar className="h-5 w-5 text-gray-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Future Shift Dates</h3>
+          <div className="bg-gray-50 rounded-lg p-4 md:p-6">
+            <div className="flex items-center space-x-2 md:space-x-3 mb-3 md:mb-4">
+              <Calendar className="h-4 w-4 md:h-5 md:w-5 text-gray-600 flex-shrink-0" />
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">Future Shift Dates</h3>
             </div>
             
             {clinic.shifts && clinic.shifts.length > 0 ? (
@@ -78,30 +79,32 @@ export function ClinicDetailsModal({ clinic, isOpen, onClose }: ClinicDetailsMod
                       key={index} 
                       className={containerClass}
                     >
-                      <div className="flex items-center space-x-3">
-                        <Calendar className={iconClass} />
-                        <span className={dateClass}>{shift.date}</span>
-                        {shift.time && (
-                          <>
-                            <span className={separatorClass}>•</span>
-                            <span className={timeClass}>{shift.time}</span>
-                          </>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        {shift.jobRoles && shift.jobRoles.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {[...shift.jobRoles].sort((a, b) => b.localeCompare(a)).map((role, roleIndex) => (
-                              <span 
-                                key={roleIndex}
-                                className={badgeClass}
-                              >
-                                {role}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 gap-2 sm:gap-0 min-w-0 flex-1">
+                        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                          <Calendar className={`${iconClass} flex-shrink-0`} />
+                          <span className={`${dateClass} truncate`}>{shift.date}</span>
+                          {shift.time && (
+                            <>
+                              <span className={`${separatorClass} hidden sm:inline`}>•</span>
+                              <span className={`${timeClass} truncate`}>{shift.time}</span>
+                            </>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          {shift.jobRoles && shift.jobRoles.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {[...shift.jobRoles].sort((a, b) => b.localeCompare(a)).map((role, roleIndex) => (
+                                <span 
+                                  key={roleIndex}
+                                  className={`${badgeClass} text-xs`}
+                                >
+                                  {role}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

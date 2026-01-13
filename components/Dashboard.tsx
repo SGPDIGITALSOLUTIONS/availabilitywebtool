@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ClinicStatus, ShiftData } from '@/lib/clinics';
 import { ClinicCard } from './ClinicCard';
 import { ClinicDetailsModal } from './ClinicDetailsModal';
-import { RefreshCw, AlertCircle, CheckCircle, Clock, XCircle, Activity, Eye, Users, HelpCircle, LogOut } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle, Clock, XCircle, Activity, Eye, Users, LogOut } from 'lucide-react';
 
 // Define the expected clinic data structure with computed status
 interface ClinicWithStatus extends ClinicStatus {
@@ -139,10 +139,6 @@ export function Dashboard() {
         ...clinic,
         computedStatus: computeClinicStatus(clinic)
       }));
-      // #region agent log
-      const edinburghClinic = clinicsWithStatus.find((c: ClinicWithStatus) => c.clinic.toLowerCase().includes('edinburgh'));
-      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'F',location:'components/Dashboard.tsx:fetchData',message:'Edinburgh in Dashboard',data:{totalClinics:clinicsWithStatus.length,edinburghFound:!!edinburghClinic,edinburghName:edinburghClinic?.clinic,edinburghShifts:edinburghClinic?.shifts?.length||0,edinburghError:edinburghClinic?.error||null,allClinics:clinicsWithStatus.map((c: ClinicWithStatus)=>({clinic:c.clinic,shifts:c.shifts?.length||0}))},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       setClinicData(clinicsWithStatus);
       setLastRefresh(new Date());
     } catch (err) {
@@ -169,16 +165,10 @@ export function Dashboard() {
   const computeClinicStatus = (clinic: ClinicStatus): 'operational' | 'limited' | 'non-functional' | 'error' => {
     const isEdinburgh = clinic.clinic.toLowerCase().includes('edinburgh');
     if (clinic.error) {
-      // #region agent log
-      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'E',location:'components/Dashboard.tsx:computeClinicStatus:error',message:'Edinburgh has error',data:{clinic:clinic.clinic,error:clinic.error},timestamp:Date.now()})}).catch(()=>{});}
-      // #endregion
       return 'error';
     } 
     
     if (!clinic.shifts || clinic.shifts.length === 0) {
-      // #region agent log
-      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'C',location:'components/Dashboard.tsx:computeClinicStatus:noShifts',message:'Edinburgh no shifts',data:{clinic:clinic.clinic,shiftsLength:clinic.shifts?.length||0},timestamp:Date.now()})}).catch(()=>{});}
-      // #endregion
       return 'non-functional';
     }
 
@@ -187,9 +177,6 @@ export function Dashboard() {
     
     clinic.shifts.forEach(shift => {
       const shiftDate = parseShiftDate(shift.date);
-      // #region agent log
-      if(isEdinburgh && !shiftDate){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'C',location:'components/Dashboard.tsx:computeClinicStatus:parseDate',message:'Edinburgh date parse failed',data:{clinic:clinic.clinic,rawDate:shift.date},timestamp:Date.now()})}).catch(()=>{});}
-      // #endregion
       if (!shiftDate) return;
       
       // Get week identifier (year-week)
@@ -296,10 +283,6 @@ export function Dashboard() {
   // Apply date filtering whenever clinic data or date range changes
   useEffect(() => {
     const filtered = filterClinicsByDateRange(clinicData);
-    // #region agent log
-    const edinburghInFiltered = filtered.find(c => c.clinic.toLowerCase().includes('edinburgh'));
-    fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'F',location:'components/Dashboard.tsx:filterEffect',message:'Edinburgh in filtered data',data:{totalFiltered:filtered.length,edinburghFound:!!edinburghInFiltered,edinburghName:edinburghInFiltered?.clinic,edinburghShifts:edinburghInFiltered?.shifts?.length||0,edinburghStatus:edinburghInFiltered?.computedStatus,allFiltered:filtered.map(c=>({clinic:c.clinic,shifts:c.shifts?.length||0,status:c.computedStatus}))},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     setFilteredClinicData(filtered);
   }, [clinicData, filterClinicsByDateRange]);
 
@@ -384,149 +367,127 @@ export function Dashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-4 md:py-8">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <div className="mb-6 md:mb-8">
+        <div className="mb-4 md:mb-6">
+          <div className="mb-4 md:mb-0">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
               Clinic Availability Dashboard
             </h1>
-            <p className="text-gray-600">
+            <p className="text-sm md:text-base text-gray-600">
               Real-time monitoring of clinic operations and staffing levels
             </p>
           </div>
           
-          <div className="flex items-center space-x-4">
+          {/* Controls - Stack on mobile */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-3 md:gap-4 mt-4 md:mt-0">
             {/* Date Range Picker */}
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <span>Date Range:</span>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                className="border border-gray-300 rounded px-2 py-1 text-sm"
-              />
-              <span>to</span>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                className="border border-gray-300 rounded px-2 py-1 text-sm"
-              />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-sm text-gray-600">
+              <span className="font-medium">Date Range:</span>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  className="border border-gray-300 rounded px-3 py-2 text-sm min-h-[44px] flex-1 sm:flex-none"
+                />
+                <span className="hidden sm:inline">to</span>
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="border border-gray-300 rounded px-3 py-2 text-sm min-h-[44px] flex-1 sm:flex-none"
+                />
+              </div>
             </div>
             
-            <label className="flex items-center space-x-2 text-sm text-gray-600">
-              <input
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              <span>Auto-refresh</span>
-            </label>
-            
-            <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="flex items-center space-x-2 px-4 py-2 bg-brand-azure text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
-            </button>
-            
-            <button
-              onClick={handleLogout}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Logout</span>
-            </button>
+            <div className="flex items-center gap-3 md:gap-4">
+              <label className="flex items-center space-x-2 text-sm text-gray-600 min-h-[44px] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoRefresh}
+                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  className="rounded border-gray-300 w-5 h-5"
+                />
+                <span>Auto-refresh</span>
+              </label>
+              
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="flex items-center justify-center space-x-2 px-4 py-2 bg-brand-azure text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] min-w-[100px]"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+              
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors min-h-[44px] min-w-[100px]"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Guide Section */}
-        <div className="mb-6 p-6 bg-brand-azure bg-opacity-5 border border-brand-azure border-opacity-20 rounded-lg">
-          <div className="flex items-center space-x-2 mb-4">
-            <HelpCircle className="h-5 w-5 text-brand-azure" />
-            <h3 className="text-lg font-semibold text-brand-azure">How the Dashboard Works</h3>
+        {/* RAG Key */}
+        <div className="mb-6 flex flex-wrap items-center justify-center gap-4 md:gap-6">
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-green-500 rounded border border-green-600"></div>
+            <span className="text-xs md:text-sm font-medium text-gray-700">Operational</span>
           </div>
-          <div className="space-y-4 text-sm text-gray-700">
-            <div>
-              <h4 className="font-medium mb-2">📅 Date Range</h4>
-              <p>Default date range is always 4 weeks unless changed manually. All statistics and status calculations are based on this selected date range.</p>
-            </div>
-            
-            <div>
-              <h4 className="font-medium mb-2">🎯 Status Calculation</h4>
-              <p>
-                The status (Operational, Limited, Non-Functional) is based on the percentage of <strong>WEEKS</strong> running within the selected period, not individual clinic sessions:
-              </p>
-              <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
-                <li><span className="font-medium text-green-700">Operational:</span> 75% or more weeks running</li>
-                <li><span className="font-medium text-yellow-700">Limited:</span> 74% to 26% weeks running</li>
-                <li><span className="font-medium text-red-700">Non-Functional:</span> 25% or less weeks running</li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-medium mb-2">🏥 Operational Flow</h4>
-              <p>
-                Although clinic cards display the number of individual clinic sessions, the operational status is based purely on 'operational flow'. 
-                For example: If a centre like Manchester runs 4 clinics in 1 week, then none for 3 weeks, this counts as only 1 functioning week 
-                because operational services like glasses collections cannot be maintained consistently.
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="font-medium mb-2">👥 Assistant Requirements</h4>
-              <p>
-                The "Assistants Required" number is calculated based on the minimum requirement of <strong>1 assistant per clinic session</strong>. 
-                Each shift needs at least 1 optometrist and 1 assistant to be considered properly staffed.
-              </p>
-            </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-yellow-500 rounded border border-yellow-600"></div>
+            <span className="text-xs md:text-sm font-medium text-gray-700">Limited</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-red-500 rounded border border-red-600"></div>
+            <span className="text-xs md:text-sm font-medium text-gray-700">Non-Functional</span>
           </div>
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+          <div className="bg-white p-3 md:p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Clinic # Potential</p>
-                <p className="text-2xl font-bold text-green-600">{totalScrapedShifts}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 truncate">Clinic # Potential</p>
+                <p className="text-xl md:text-2xl font-bold text-green-600">{totalScrapedShifts}</p>
               </div>
-              <Activity className="h-8 w-8 text-green-500" />
+              <Activity className="h-6 w-6 md:h-8 md:w-8 text-green-500 flex-shrink-0 ml-2" />
             </div>
           </div>
           
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="bg-white p-3 md:p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Clinics Running</p>
-                <p className="text-2xl font-bold text-orange-600">{clinicsRunningPercentage}%</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 truncate">Clinics Running</p>
+                <p className="text-xl md:text-2xl font-bold text-orange-600">{clinicsRunningPercentage}%</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-orange-500" />
+              <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-orange-500 flex-shrink-0 ml-2" />
             </div>
           </div>
           
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="bg-white p-3 md:p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Optometrists Required</p>
-                <p className="text-2xl font-bold text-red-600">{totalOptometristsRequired}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 truncate">Optometrists Required</p>
+                <p className="text-xl md:text-2xl font-bold text-red-600">{totalOptometristsRequired}</p>
               </div>
-              <Eye className="h-8 w-8 text-red-500" />
+              <Eye className="h-6 w-6 md:h-8 md:w-8 text-red-500 flex-shrink-0 ml-2" />
             </div>
           </div>
           
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="bg-white p-3 md:p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Assistants Required</p>
-                <p className="text-2xl font-bold text-brand-azure">{totalAssistantsRequired}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-medium text-gray-600 truncate">Assistants Required</p>
+                <p className="text-xl md:text-2xl font-bold text-brand-azure">{totalAssistantsRequired}</p>
               </div>
-              <Users className="h-8 w-8 text-brand-azure" />
+              <Users className="h-6 w-6 md:h-8 md:w-8 text-brand-azure flex-shrink-0 ml-2" />
             </div>
           </div>
         </div>
@@ -554,12 +515,8 @@ export function Dashboard() {
 
       {/* Clinic Grid */}
       {filteredClinicData.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {filteredClinicData.map((clinic, index) => {
-            // #region agent log
-            const isEdinburgh = clinic.clinic.toLowerCase().includes('edinburgh');
-            if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'F',location:'components/Dashboard.tsx:render',message:'Edinburgh rendering',data:{clinic:clinic.clinic,index,shifts:clinic.shifts?.length||0,status:clinic.computedStatus},timestamp:Date.now()})}).catch(()=>{});}
-            // #endregion
             return (
               <ClinicCard 
                 key={`${clinic.clinic}-${index}`} 

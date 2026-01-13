@@ -43,10 +43,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-sky from-opacity-20 to-brand-turquoise to-opacity-20 px-4" style={{ background: 'linear-gradient(to bottom right, rgba(99, 185, 232, 0.1), rgba(24, 172, 167, 0.1))' }}>
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-sky from-opacity-20 to-brand-turquoise to-opacity-20 px-4 py-8" style={{ background: 'linear-gradient(to bottom right, rgba(99, 185, 232, 0.1), rgba(24, 172, 167, 0.1))' }}>
+      <div className="max-w-md w-full space-y-6 md:space-y-8 bg-white p-6 md:p-8 rounded-lg shadow-lg">
         <div className="flex flex-col items-center">
-          <div className="h-16 mb-6 relative w-48">
+          <div className="h-12 md:h-16 mb-4 md:mb-6 relative w-40 md:w-48">
             <Image
               src="/assets/Vision_Care_RGB.gif"
               alt="Vision Care Logo"
@@ -55,14 +55,14 @@ export default function LoginPage() {
               className="object-contain"
             />
           </div>
-          <h2 className="text-center text-2xl font-bold text-gray-900">
+          <h2 className="text-center text-xl md:text-2xl font-bold text-gray-900">
             Vision Care Reporting
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Sign in to access the portal
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-6 md:mt-8 space-y-5 md:space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
@@ -82,11 +82,12 @@ export default function LoginPage() {
                 name="username"
                 type="text"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 text-base md:text-sm min-h-[44px]"
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={loading}
+                autoComplete="username"
               />
             </div>
             <div>
@@ -98,11 +99,12 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 text-base md:text-sm min-h-[44px]"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
+                autoComplete="current-password"
               />
             </div>
           </div>
@@ -111,7 +113,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-azure hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-azure disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-base md:text-sm font-medium rounded-md text-white bg-brand-azure hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-azure disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>

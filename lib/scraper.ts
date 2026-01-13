@@ -25,23 +25,12 @@ export class ClinicScraper {
     try {
       console.log(`\n🔍 Scraping ${clinic.name}...`);
       console.log(`📍 URL: ${clinic.url}`);
-      // #region agent log
-      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:start',message:'Edinburgh scrape start',data:{name:clinic.name,url:clinic.url,dateRange:dateRange ? {start:dateRange.start.toISOString(),end:dateRange.end.toISOString()} : null},timestamp:Date.now()})}).catch(()=>{});}
-      // #endregion
-      
       let htmlText: string;
       
       // Use Puppeteer for all clinics to handle JavaScript-rendered content
       console.log(`🌐 Using Puppeteer for ${clinic.name} to handle JavaScript-rendered content...`);
-      // #region agent log
-      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:puppeteerStart',message:'Edinburgh Puppeteer start',data:{clinic:clinic.name},timestamp:Date.now()})}).catch(()=>{});}
-      // #endregion
-      
       // Create browser if not provided (for backward compatibility)
       if (!browser) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeClinic:beforeBrowserLaunch',message:'Before browser launch',data:{isVercel:!!process.env.VERCEL,clinic:clinic.name},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         try {
       // Use Vercel-compatible Puppeteer on Vercel, regular Puppeteer locally
       if (process.env.VERCEL) {
@@ -108,14 +97,8 @@ export class ClinicScraper {
               ]
             });
           }
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeClinic:browserLaunchSuccess',message:'Browser launch success',data:{clinic:clinic.name,isVercel:!!process.env.VERCEL},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
-        } catch (launchError) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeClinic:browserLaunchError',message:'Browser launch error',data:{clinic:clinic.name,isVercel:!!process.env.VERCEL,errorType:launchError instanceof Error ? launchError.constructor.name : typeof launchError,errorMessage:launchError instanceof Error ? launchError.message : String(launchError),errorStack:launchError instanceof Error ? launchError.stack : null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      const errorMsg = launchError instanceof Error ? launchError.message : String(launchError);
+          } catch (launchError) {
+          const errorMsg = launchError instanceof Error ? launchError.message : String(launchError);
       console.error(`❌ [Scraper] Browser launch failed for ${clinic.name}:`, {
         error: errorMsg,
         clinic: clinic.name,
@@ -155,13 +138,7 @@ export class ClinicScraper {
         htmlText = await page.content();
         await page.close(); // Close page, not browser
         console.log(`✅ Puppeteer fetched HTML: ${htmlText.length} characters`);
-        // #region agent log
-        if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:puppeteerSuccess',message:'Edinburgh Puppeteer success',data:{clinic:clinic.name,htmlLength:htmlText.length},timestamp:Date.now()})}).catch(()=>{});}
-        // #endregion
-      } catch (error) {
-        // #region agent log
-        if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:puppeteerError',message:'Edinburgh Puppeteer error',data:{clinic:clinic.name,error:error instanceof Error ? error.message : String(error)},timestamp:Date.now()})}).catch(()=>{});}
-        // #endregion
+        } catch (error) {
         throw error;
       } finally {
         // Only close browser if we created it
@@ -170,21 +147,6 @@ export class ClinicScraper {
         }
       }
       console.log(`📄 Content Length: ${htmlText.length} characters`);
-      // #region agent log
-      if(isEdinburgh){
-        // Extract a sample of the HTML to see what dates are actually in it
-        const dateMatches = htmlText.match(/Monday\s+\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}/gi);
-        const sampleDates = dateMatches ? dateMatches.slice(0, 5) : [];
-        // Also check for 2026 dates specifically
-        const dateMatches2026 = htmlText.match(/Monday\s+\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+2026/gi);
-        const sampleDates2026 = dateMatches2026 ? dateMatches2026.slice(0, 5) : [];
-        // Extract a sample of the actual table HTML to see the structure
-        const tableMatch = htmlText.match(/<table[^>]*>[\s\S]{0,2000}<\/table>/i);
-        const tableSample = tableMatch ? tableMatch[0].substring(0, 500) : null;
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:htmlContent',message:'Edinburgh HTML received',data:{htmlLength:htmlText.length,sampleDates,sampleDates2026,has2026Dates:dateMatches2026 && dateMatches2026.length > 0,tableSample},timestamp:Date.now()})}).catch(()=>{});
-      }
-      // #endregion
-
       const $ = cheerio.load(htmlText);
       
       // Log some basic HTML structure info
@@ -201,10 +163,6 @@ export class ClinicScraper {
       const shifts = this.extractShiftData($, clinic.name, dateRange);
 
       console.log(`✨ Final result for ${clinic.name}: ${shifts.length} shifts extracted`);
-      // #region agent log
-      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'C',location:'lib/scraper.ts:scrapeClinic:success',message:'Edinburgh scrape success',data:{shiftsCount:shifts.length,shifts:shifts.map(s=>({date:s.date,time:s.time,roles:s.jobRoles.length}))},timestamp:Date.now()})}).catch(()=>{});}
-      // #endregion
-      
       return {
         clinic: clinic.name,
         shifts,
@@ -215,10 +173,6 @@ export class ClinicScraper {
       console.error(`❌ Error scraping ${clinic.name}:`, error);
       console.error(`   Error type: ${error instanceof Error ? error.constructor.name : typeof error}`);
       console.error(`   Error message: ${error instanceof Error ? error.message : String(error)}`);
-      // #region agent log
-      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'A',location:'lib/scraper.ts:scrapeClinic:error',message:'Edinburgh scrape error',data:{errorType:error instanceof Error ? error.constructor.name : typeof error,errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now()})}).catch(()=>{});}
-      // #endregion
-      
       return {
         clinic: clinic.name,
         shifts: [],
@@ -241,19 +195,10 @@ export class ClinicScraper {
         return headerText.includes('shift date');
       });
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'E',location:'lib/scraper.ts:tables',message:'Tables detected',data:{clinic:clinicName,rotaTables:rotaTables.length,totalTables:$('table').length},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
       const tablesToProcess = rotaTables.length > 0 ? rotaTables : $('table');
       if (rotaTables.length === 0) {
         console.log('⚠️  No explicit rota table found, falling back to all tables');
       }
-      // #region agent log
-      const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
-      if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'B',location:'lib/scraper.ts:extractShiftData:tables',message:'Edinburgh table detection',data:{rotaTables:rotaTables.length,totalTables:$('table').length,usingFallback:rotaTables.length===0},timestamp:Date.now()})}).catch(()=>{});}
-      // #endregion
-
       tablesToProcess.each((tableIndex, table) => {
         const $table = $(table);
         console.log(`\n📋 Processing table ${tableIndex + 1}...`);
@@ -261,11 +206,6 @@ export class ClinicScraper {
         // Log table structure
         const tableRows = $table.find('tr').length;
         console.log(`   - Rows in table: ${tableRows}`);
-        // #region agent log
-        const headerText = $table.find('th').text().trim();
-        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'E',location:'lib/scraper.ts:tableHeader',message:'Table header text',data:{clinic:clinicName,tableIndex:tableIndex+1,header:headerText},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        
         // Process each row in the table
         // Convert to array so we can break early
         const rows = $table.find('tr').toArray();
@@ -302,10 +242,6 @@ export class ClinicScraper {
               .text()
               .replace(/\s+/g, ' ')
               .trim();
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'lib/scraper.ts:cell',message:'Cell text parsed',data:{clinic:clinicName,row:rowIndex+1,cell:cellIndex+1,text:cellText},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
-            
             console.log(`      Cell ${cellIndex + 1}: "${cellText}"`);
 
             // Extract date and time ONLY from first column (column 1)
@@ -318,11 +254,7 @@ export class ClinicScraper {
               if (dateMatch) {
                 console.log(`      ✅ Date found: "${dateMatch}" (raw cell: "${cellText}")`);
                 shiftDate = dateMatch;
-                // #region agent log
-                const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
-                fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:isEdinburgh?'run-edinburgh':'run1',hypothesisId:isEdinburgh?'C':'B',location:'lib/scraper.ts:dateMatch',message:isEdinburgh?'Edinburgh date matched':'Date matched',data:{clinic:clinicName,row:rowIndex+1,cell:cellIndex+1,dateMatch,rawCell:cellText},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
-              }
+                }
               if (timeMatch) {
                 console.log(`      ✅ Time found: "${timeMatch}"`);
                 shiftTime = timeMatch;
@@ -358,11 +290,7 @@ export class ClinicScraper {
             if (isoWithYear) {
               // Preserve the year from ISO format - don't override it
               normalizedIso = shiftDate; // Already in correct format
-              // #region agent log
-              const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
-              if(isEdinburgh){fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'C',location:'lib/scraper.ts:normalize:preserveYear',message:'Edinburgh preserving year',data:{clinic:clinicName,row:rowIndex+1,shiftDate,normalizedIso},timestamp:Date.now()})}).catch(()=>{});}
-              // #endregion
-            } else if (shortDdMm) {
+              } else if (shortDdMm) {
               // Date without year - infer year intelligently
               const day = parseInt(shortDdMm[1], 10);
               const month = parseInt(shortDdMm[2], 10);
@@ -397,10 +325,7 @@ export class ClinicScraper {
                   year: 'numeric'
                 });
                 displayDate = `${dayName} ${shortDate}`;
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'C',location:'lib/scraper.ts:normalized',message:'Normalized ISO applied',data:{clinic:clinicName,row:rowIndex+1,normalizedIso,displayDate},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
-              } catch (error) {
+                } catch (error) {
                 // Keep existing displayDate if formatting fails
                 console.log(`      ⚠️  Date normalization failed for ${normalizedIso}, keeping original`);
               }
@@ -423,10 +348,6 @@ export class ClinicScraper {
               if (candidateDate) {
                 candidateDate.setHours(0, 0, 0, 0);
                 if (candidateDate < today) {
-                  // #region agent log
-                  const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
-                  fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:isEdinburgh?'run-edinburgh':'run6',hypothesisId:isEdinburgh?'D':'J',location:'lib/scraper.ts:skipPast',message:isEdinburgh?'Edinburgh skipping past shift':'Skipping past shift',data:{clinic:clinicName,row:rowIndex+1,rawDate:shiftDate,normalizedIso,candidateDate:candidateDate.toISOString(),today:today.toISOString(),isPast:candidateDate<today},timestamp:Date.now()})}).catch(()=>{});
-                  // #endregion
                   continue;
                 }
               }
@@ -461,10 +382,6 @@ export class ClinicScraper {
                     shouldStopProcessing = true; // Signal to stop processing rows
                     continue; // Skip this shift
                   }
-                  // #region agent log
-                  const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
-                  fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:isEdinburgh?'run-edinburgh':'run5',hypothesisId:isEdinburgh?'C':'H',location:'lib/scraper.ts:dateRangeFilter',message:isEdinburgh?'Edinburgh shift filtered by date range':'Shift filtered by date range',data:{clinic:clinicName,row:rowIndex+1,finalDate,shiftDateObj:shiftDateObj.toISOString(),startDate:dateRange.start.toISOString(),endDate:dateRange.end.toISOString(),inRange:false,consecutiveOutOfRange},timestamp:Date.now()})}).catch(()=>{});
-                  // #endregion
                   continue; // Skip this shift - outside date range
                 } else {
                   // Reset counter when we find a shift in range
@@ -472,11 +389,6 @@ export class ClinicScraper {
                 }
               }
             }
-            
-            // #region agent log
-            const isEdinburgh = clinicName.toLowerCase().includes('edinburgh');
-            fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:isEdinburgh?'run-edinburgh':'run5',hypothesisId:isEdinburgh?'C':'H',location:'lib/scraper.ts:finalShift',message:isEdinburgh?'Edinburgh shift recorded':'Shift recorded',data:{clinic:clinicName,row:rowIndex+1,rawDate:shiftDate||null,rawTime:shiftTime||null,finalDate,shiftTime,jobRoles},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             
             const shift = {
               // Store ISO when available so API consumers get an unambiguous date
@@ -498,9 +410,6 @@ export class ClinicScraper {
 
     console.log(`\n📊 Summary for ${clinicName}: ${shifts.length} shifts extracted`);
     const uniqueDates = Array.from(new Set(shifts.map(s => s.date)));
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run6',hypothesisId:'I',location:'lib/scraper.ts:clinicSummary',message:'Clinic shifts summary',data:{clinic:clinicName,shiftCount:shifts.length,uniqueDates:uniqueDates.length},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     shifts.forEach((shift, index) => {
       console.log(`   ${index + 1}. ${shift.date} ${shift.time} - [${shift.jobRoles.join(', ')}]`);
     });
@@ -806,9 +715,6 @@ export class ClinicScraper {
     
     // Create a single browser instance to reuse across all clinics for better performance
     console.log(`🌐 Launching shared Puppeteer browser...`);
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeAllClinics:beforeBrowserLaunch',message:'Before shared browser launch',data:{isVercel:!!process.env.VERCEL,clinicCount:clinics.length},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     let browser;
     try {
           // Use Vercel-compatible Puppeteer on Vercel, regular Puppeteer locally
@@ -876,13 +782,7 @@ export class ClinicScraper {
           ]
         });
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeAllClinics:browserLaunchSuccess',message:'Shared browser launch success',data:{isVercel:!!process.env.VERCEL},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-    } catch (launchError) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'vercel-debug',hypothesisId:'D',location:'lib/scraper.ts:scrapeAllClinics:browserLaunchError',message:'Shared browser launch error',data:{isVercel:!!process.env.VERCEL,errorType:launchError instanceof Error ? launchError.constructor.name : typeof launchError,errorMessage:launchError instanceof Error ? launchError.message : String(launchError),errorStack:launchError instanceof Error ? launchError.stack : null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+      } catch (launchError) {
       throw launchError;
     }
     

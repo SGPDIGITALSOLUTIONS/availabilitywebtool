@@ -45,3 +45,39 @@ model User {
   @@index([username])
   @@map("user")
 }
+
+model Forecast {
+  id              String   @id @default(cuid())
+  name            String   // Forecast name (required)
+  dateRangeStart  DateTime
+  dateRangeEnd    DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Variable inputs
+  nhsTestValue        Float   @default(0)
+  nhsEligiblePercent  Float   @default(0)  // e.g., 0.75 for 75%
+  gos3EligiblePercent Float   @default(0)  // e.g., 0.20 for 20%
+  averageGos3Value    Float   @default(0)
+  
+  // Relationships
+  clinicTargets       ForecastClinicTarget[]
+  
+  @@index([createdAt])
+  @@index([name])
+  @@map("forecast")
+}
+
+model ForecastClinicTarget {
+  id                    String   @id @default(cuid())
+  forecastId            String
+  clinicName            String   // e.g., "Birmingham", "Edinburgh Skylight"
+  targetClinics         Int      // Target number of clinics for this clinic
+  targetTests           Int      // Target number of tests for this clinic
+  
+  forecast              Forecast @relation(fields: [forecastId], references: [id], onDelete: Cascade)
+  
+  @@unique([forecastId, clinicName])
+  @@index([forecastId])
+  @@map("forecast_clinic_target")
+}

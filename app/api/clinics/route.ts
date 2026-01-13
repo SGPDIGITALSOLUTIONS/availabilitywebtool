@@ -110,11 +110,6 @@ export async function GET(request: Request) {
       console.log(`🔄 Cache miss or stale, scraping live data...`);
     }
 
-    // #region agent log
-    const edinburghClinic = allClinics.find(c => c.name.toLowerCase().includes('edinburgh'));
-    fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'F',location:'app/api/clinics/route.ts:getAllClinics',message:'Edinburgh clinic check',data:{found:!!edinburghClinic,name:edinburghClinic?.name,url:edinburghClinic?.url,totalClinics:allClinics.length,dateRange:dateRange ? {start:dateRange.start.toISOString(),end:dateRange.end.toISOString()} : null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-
     const scraper = new ClinicScraper();
 
     const startTime = Date.now();
@@ -122,11 +117,6 @@ export async function GET(request: Request) {
     const endTime = Date.now();
 
     console.log(`⚡ Total scraping completed in ${(endTime - startTime) / 1000}s`);
-    // #region agent log
-    const edinburghResult = clinicData.find(c => c.clinic.toLowerCase().includes('edinburgh'));
-    fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run-edinburgh',hypothesisId:'E',location:'app/api/clinics/route.ts:finalResults',message:'Edinburgh final result',data:{found:!!edinburghResult,clinic:edinburghResult?.clinic,shifts:edinburghResult?.shifts?.length||0,error:edinburghResult?.error||null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-
     return NextResponse.json({
       clinics: clinicData,
       cached: false,
