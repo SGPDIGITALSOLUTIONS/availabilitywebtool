@@ -2,6 +2,7 @@ import React from 'react'
 import './globals.css'
 import type { Metadata } from 'next'
 import { Navigation } from '@/components/Navigation'
+import { Footer } from '@/components/Footer'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
 import { PWAMetaTags } from '@/components/PWAMetaTags'
@@ -40,9 +41,12 @@ export default function RootLayout({
       <body>
         <PWAMetaTags />
         <ServiceWorkerRegistration />
-        <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom right, rgba(99, 185, 232, 0.1), rgba(24, 172, 167, 0.1))' }}>
+        <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(to bottom right, rgba(99, 185, 232, 0.1), rgba(24, 172, 167, 0.1))' }}>
           <Navigation />
-          {children}
+          <div className="flex-1">
+            {children}
+          </div>
+          <Footer />
           <PWAInstallPrompt />
         </div>
       </body>
