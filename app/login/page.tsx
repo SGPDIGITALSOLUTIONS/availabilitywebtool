@@ -9,6 +9,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordChangeError, setPasswordChangeError] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,12 +38,61 @@ export default function LoginPage() {
         return;
       }
 
+      // Check if password change is required
+      if (data.mustChangePassword) {
+        setShowPasswordChangeModal(true);
+        setLoading(false);
+        return;
+      }
+
       // Redirect to home page on success
       router.push('/');
       router.refresh();
     } catch (err) {
       setError('An error occurred. Please try again.');
       setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordChangeError('');
+
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordChangeError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordChangeError('Passwords do not match');
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setPasswordChangeError(data.error || 'Failed to change password');
+        setChangingPassword(false);
+        return;
+      }
+
+      // Password changed successfully, redirect to home
+      router.push('/');
+      router.refresh();
+    } catch (err) {
+      setPasswordChangeError('An error occurred. Please try again.');
+      setChangingPassword(false);
     }
   };
 
@@ -120,6 +174,74 @@ export default function LoginPage() {
           </div>
         </form>
       </div>
+
+      {/* Password Change Modal */}
+      {showPasswordChangeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 md:p-8">
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-4">
+              Change Your Password
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              You must change your password before continuing.
+            </p>
+            
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              {passwordChangeError && (
+                <div className="rounded-md bg-red-50 p-3">
+                  <p className="text-sm text-red-800">{passwordChangeError}</p>
+                </div>
+              )}
+              
+              <div>
+                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  New Password
+                </label>
+                <input
+                  id="newPassword"
+                  type="password"
+                  required
+                  minLength={6}
+                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base md:text-sm min-h-[44px]"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  disabled={changingPassword}
+                  autoComplete="new-password"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  required
+                  minLength={6}
+                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base md:text-sm min-h-[44px]"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={changingPassword}
+                  autoComplete="new-password"
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={changingPassword}
+                  className="flex-1 flex justify-center py-3 px-4 border border-transparent text-base md:text-sm font-medium rounded-md text-white bg-brand-azure hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-azure disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                >
+                  {changingPassword ? 'Changing...' : 'Change Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

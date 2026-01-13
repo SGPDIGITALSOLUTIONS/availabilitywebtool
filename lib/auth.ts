@@ -15,6 +15,7 @@ export async function getCurrentUser() {
       select: {
         id: true,
         username: true,
+        mustChangePassword: true,
       },
     });
 

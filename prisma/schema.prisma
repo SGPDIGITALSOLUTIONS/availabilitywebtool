@@ -36,11 +36,15 @@ model ScrapeJob {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String   // Hashed password
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  username          String   @unique
+  password          String   // Hashed password
+  mustChangePassword Boolean @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relationships
+  allocatedTasks    Task[]   @relation("AllocatedByUser")
   
   @@index([username])
   @@map("user")
@@ -80,4 +84,43 @@ model ForecastClinicTarget {
   @@unique([forecastId, clinicName])
   @@index([forecastId])
   @@map("forecast_clinic_target")
+}
+
+model Task {
+  id                    String   @id @default(cuid())
+  title                 String
+  description           String?
+  startDate             DateTime
+  deadline              DateTime
+  status                String   @default("pending") // "pending" | "in_progress" | "completed"
+  importance            Int      @default(3) // 1-5
+  notes                 String?
+  
+  // Meeting fields
+  meetingType           String?  // "in_person" | "call" | null
+  location              String?  // For in-person meetings
+  meetingLink           String?  // For call meetings (Teams/Zoom)
+  
+  // Recurrence
+  recurrence            String   @default("none") // "none" | "daily" | "weekly" | "monthly" | "custom"
+  recurrenceDays        String?  // Comma-separated days for custom (e.g., "monday,wednesday,friday")
+  
+  // Task type flags
+  isCustomMeeting       Boolean  @default(false)
+  isPersonalTask        Boolean  @default(false)
+  
+  // Allocated by fields
+  allocatedByUserId     String?
+  allocatedByOverride   String?  // Manual override text
+  
+  // Relationships
+  allocatedByUser       User?    @relation("AllocatedByUser", fields: [allocatedByUserId], references: [id], onDelete: SetNull)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@index([status])
+  @@index([deadline])
+  @@index([allocatedByUserId])
+  @@map("task")
 }

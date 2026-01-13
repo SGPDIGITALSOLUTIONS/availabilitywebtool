@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { Activity, TrendingUp, Menu, X } from 'lucide-react';
+import { Activity, TrendingUp, Menu, X, CheckSquare } from 'lucide-react';
 
 export function Navigation() {
   const pathname = usePathname();
@@ -61,6 +61,18 @@ export function Navigation() {
                 <TrendingUp className="h-5 w-5" />
                 <span>Forecasting</span>
               </Link>
+              
+              <Link
+                href="/tasks"
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
+                  isActive('/tasks')
+                    ? 'bg-brand-jade bg-opacity-10 text-brand-jade'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <CheckSquare className="h-5 w-5" />
+                <span>Steve Task List</span>
+              </Link>
             </div>
           </div>
           
@@ -93,7 +105,7 @@ export function Navigation() {
             <Link
               href="/forecasting"
               onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors min-h-[44px] ${
+              className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors min-h-[44px] mb-2 ${
                 isActive('/forecasting')
                   ? 'bg-brand-turquoise bg-opacity-10 text-brand-turquoise'
                   : 'text-gray-700 hover:bg-gray-100'
@@ -101,6 +113,19 @@ export function Navigation() {
             >
               <TrendingUp className="h-5 w-5" />
               <span>Forecasting</span>
+            </Link>
+            
+            <Link
+              href="/tasks"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors min-h-[44px] ${
+                isActive('/tasks')
+                  ? 'bg-brand-jade bg-opacity-10 text-brand-jade'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <CheckSquare className="h-5 w-5" />
+              <span>Steve Task List</span>
             </Link>
           </div>
         )}

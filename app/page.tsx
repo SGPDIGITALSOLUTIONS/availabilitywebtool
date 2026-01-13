@@ -2,7 +2,7 @@ import React from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import Link from 'next/link';
-import { Activity, TrendingUp, ArrowRight } from 'lucide-react';
+import { Activity, TrendingUp, ArrowRight, CheckSquare } from 'lucide-react';
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -23,7 +23,7 @@ export default async function Home() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Clinic Availability Dashboard Card */}
           <Link
             href="/dashboard"
@@ -64,6 +64,28 @@ export default async function Home() {
             </p>
             <div className="flex items-center text-brand-turquoise font-medium group-hover:translate-x-2 transition-transform">
               <span>View Forecasting</span>
+              <ArrowRight className="h-5 w-5 ml-2" />
+            </div>
+          </Link>
+
+          {/* Steve Task List Card */}
+          <Link
+            href="/tasks"
+            className="group bg-white rounded-lg shadow-lg p-6 md:p-8 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-brand-jade min-h-[44px]"
+          >
+            <div className="flex items-center space-x-3 md:space-x-4 mb-4">
+              <div className="bg-brand-jade bg-opacity-10 p-2 md:p-3 rounded-lg">
+                <CheckSquare className="h-6 w-6 md:h-8 md:w-8 text-brand-jade" />
+              </div>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+                Steve Task List
+              </h2>
+            </div>
+            <p className="text-sm md:text-base text-gray-600 mb-4 md:mb-6">
+              Manage tasks, meetings, and personal items with smart prioritization and tracking.
+            </p>
+            <div className="flex items-center text-brand-jade font-medium group-hover:translate-x-2 transition-transform">
+              <span>View Task List</span>
               <ArrowRight className="h-5 w-5 ml-2" />
             </div>
           </Link>

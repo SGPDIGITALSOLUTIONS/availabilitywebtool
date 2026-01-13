@@ -6,14 +6,17 @@ const prisma = new PrismaClient();
 async function main() {
   const username = process.argv[2];
   const password = process.argv[3];
+  const mustChangePassword = process.argv[4] === 'true' || process.argv[4] === '--must-change';
 
   if (!username || !password) {
-    console.error('Usage: npx tsx scripts/create-user.ts <username> <password>');
+    console.error('Usage: npx tsx scripts/create-user.ts <username> <password> [--must-change]');
     process.exit(1);
   }
 
-  if (password.length < 6) {
-    console.error('Error: Password must be at least 6 characters');
+  // Allow shorter passwords if mustChangePassword is true (they'll be changed anyway)
+  const minPasswordLength = mustChangePassword ? 4 : 6;
+  if (password.length < minPasswordLength) {
+    console.error(`Error: Password must be at least ${minPasswordLength} characters`);
     process.exit(1);
   }
 
@@ -36,10 +39,12 @@ async function main() {
       data: {
         username,
         password: hashedPassword,
+        mustChangePassword,
       },
       select: {
         id: true,
         username: true,
+        mustChangePassword: true,
         createdAt: true,
       },
     });
@@ -47,6 +52,7 @@ async function main() {
     console.log('✅ User created successfully!');
     console.log(`   Username: ${user.username}`);
     console.log(`   ID: ${user.id}`);
+    console.log(`   Must Change Password: ${user.mustChangePassword}`);
     console.log(`   Created: ${user.createdAt}`);
   } catch (error) {
     console.error('Error creating user:', error);

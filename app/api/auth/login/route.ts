@@ -51,6 +51,7 @@ export async function POST(request: Request) {
         id: user.id,
         username: user.username,
       },
+      mustChangePassword: user.mustChangePassword || false,
     });
   } catch (error) {
     console.error('Login error:', error);
