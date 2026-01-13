@@ -14,11 +14,8 @@ export async function GET() {
       );
     }
 
-    // Get all non-completed tasks
-    const tasks = await prisma.task.findMany({
-      where: {
-        status: { not: 'completed' },
-      },
+    // Get all tasks (including completed) for average calculation
+    const allTasks = await prisma.task.findMany({
       include: {
         allocatedByUser: {
           select: {
@@ -32,10 +29,11 @@ export async function GET() {
       },
     });
 
-    // Calculate statistics
-    const totalTasks = tasks.length;
-    
-    if (totalTasks === 0) {
+    // Get only non-completed tasks for count and most urgent
+    const activeTasks = allTasks.filter(task => task.status !== 'completed');
+    const totalTasks = activeTasks.length;
+
+    if (allTasks.length === 0) {
       return NextResponse.json({
         success: true,
         data: {
@@ -46,8 +44,8 @@ export async function GET() {
       });
     }
 
-    // Calculate urgency scores for all tasks
-    const tasksWithScores = tasks.map(task => ({
+    // Calculate urgency scores for ALL tasks (including completed)
+    const allTasksWithScores = allTasks.map(task => ({
       ...task,
       urgencyScore: calculateSmartScore({
         id: task.id,
@@ -60,28 +58,31 @@ export async function GET() {
       }),
     }));
 
-    // Calculate average urgency
-    const totalUrgency = tasksWithScores.reduce((sum, task) => sum + task.urgencyScore, 0);
-    const averageUrgency = Math.round((totalUrgency / totalTasks) * 10) / 10; // Round to 1 decimal
+    // Calculate average urgency: sum of all urgency scores divided by total number of tasks
+    const totalUrgency = allTasksWithScores.reduce((sum, task) => sum + task.urgencyScore, 0);
+    const averageUrgency = Math.round((totalUrgency / allTasks.length) * 10) / 10; // Round to 1 decimal
 
-    // Find most urgent task (highest score)
-    const mostUrgentTask = tasksWithScores.reduce((max, task) => 
-      task.urgencyScore > max.urgencyScore ? task : max
-    );
+    // Find most urgent task (highest score) from active tasks only
+    const activeTasksWithScores = allTasksWithScores.filter(task => task.status !== 'completed');
+    const mostUrgentTask = activeTasksWithScores.length > 0
+      ? activeTasksWithScores.reduce((max, task) => 
+          task.urgencyScore > max.urgencyScore ? task : max
+        )
+      : null;
 
     return NextResponse.json({
       success: true,
       data: {
         totalTasks,
         averageUrgency,
-        mostUrgentTask: {
+        mostUrgentTask: mostUrgentTask ? {
           id: mostUrgentTask.id,
           title: mostUrgentTask.title,
           urgencyScore: mostUrgentTask.urgencyScore,
           deadline: mostUrgentTask.deadline,
           status: mostUrgentTask.status,
           importance: mostUrgentTask.importance,
-        },
+        } : null,
       },
     });
   } catch (error) {
