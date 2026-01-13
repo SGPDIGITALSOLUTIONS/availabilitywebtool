@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { calculateSmartScore } from '@/lib/task-calculations';
 
 export async function GET() {
   try {
@@ -66,51 +65,58 @@ export async function POST() {
       },
     });
 
-    // Calculate statistics
-    const totalTasks = allTasks.length;
-    const completedTasks = allTasks.filter(t => t.status === 'completed').length;
-    const pendingTasks = allTasks.filter(t => t.status === 'pending').length;
-    const inProgressTasks = allTasks.filter(t => t.status === 'in_progress').length;
-    
-    // Count ad-hoc tasks completed today
+    // Calculate date range for today
     const todayStart = new Date(today);
     const todayEnd = new Date(today);
     todayEnd.setHours(23, 59, 59, 999);
     
-    const adhocTasks = allTasks.filter(task => {
-      if (!task.isAdhocTask || task.status !== 'completed') return false;
+    // Filter tasks completed today
+    const tasksCompletedToday = allTasks.filter(task => {
+      if (task.status !== 'completed') return false;
       const taskDate = new Date(task.updatedAt);
       return taskDate >= todayStart && taskDate <= todayEnd;
-    }).length;
+    });
 
-    // Calculate average urgency
-    const tasksWithScores = allTasks.map(task => ({
-      ...task,
-      urgencyScore: calculateSmartScore({
-        id: task.id,
-        title: task.title,
-        deadline: task.deadline,
-        status: task.status as 'pending' | 'in_progress' | 'completed',
-        importance: task.importance,
-        createdAt: task.createdAt,
-        updatedAt: task.updatedAt,
-      }),
+    // Calculate metrics
+    const adhocTasksCompletedToday = tasksCompletedToday.filter(t => t.isAdhocTask).length;
+    const plannedTasksCompletedToday = tasksCompletedToday.filter(t => !t.isAdhocTask).length;
+    const totalTasksCompletedToday = tasksCompletedToday.length;
+
+    // Get pending and completed task lists for details
+    const pendingTasks = allTasks
+      .filter(t => t.status === 'pending')
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        deadline: t.deadline.toISOString(),
+        importance: t.importance,
+        allocatedBy: t.allocatedByUser?.username || t.allocatedByOverride || 'Unknown',
+      }));
+
+    const completedTasksList = tasksCompletedToday.map(t => ({
+      id: t.id,
+      title: t.title,
+      deadline: t.deadline.toISOString(),
+      importance: t.importance,
+      isAdhoc: t.isAdhocTask,
+      allocatedBy: t.allocatedByUser?.username || t.allocatedByOverride || 'Unknown',
+      completedAt: t.updatedAt.toISOString(),
     }));
 
-    const totalUrgency = tasksWithScores.reduce((sum, task) => sum + task.urgencyScore, 0);
-    const averageUrgency = totalTasks > 0 ? Math.round((totalUrgency / totalTasks) * 10) / 10 : 0;
+    // Store task details as JSON
+    const taskDetails = {
+      pending: pendingTasks,
+      completed: completedTasksList,
+    };
 
     // Generate CSV data
     const csvRows = [
-      ['Date', 'Total Tasks', 'Completed Tasks', 'Pending Tasks', 'In Progress Tasks', 'Ad-hoc Tasks (Today)', 'Average Urgency'],
+      ['Date', 'Planned Tasks Completed Today', 'Ad-hoc Tasks Completed Today', 'Total Tasks Completed Today'],
       [
         today.toISOString().split('T')[0],
-        totalTasks.toString(),
-        completedTasks.toString(),
-        pendingTasks.toString(),
-        inProgressTasks.toString(),
-        adhocTasks.toString(),
-        averageUrgency.toString(),
+        plannedTasksCompletedToday.toString(),
+        adhocTasksCompletedToday.toString(),
+        totalTasksCompletedToday.toString(),
       ],
     ];
 
@@ -128,12 +134,10 @@ export async function POST() {
         where: { id: existingReport.id },
         data: {
           csvData,
-          totalTasks,
-          completedTasks,
-          pendingTasks,
-          inProgressTasks,
-          adhocTasks,
-          averageUrgency,
+          plannedTasksCompletedToday,
+          adhocTasksCompletedToday,
+          totalTasksCompletedToday,
+          taskDetails,
         },
       });
     } else {
@@ -142,12 +146,10 @@ export async function POST() {
         data: {
           reportDate: today,
           csvData,
-          totalTasks,
-          completedTasks,
-          pendingTasks,
-          inProgressTasks,
-          adhocTasks,
-          averageUrgency,
+          plannedTasksCompletedToday,
+          adhocTasksCompletedToday,
+          totalTasksCompletedToday,
+          taskDetails,
         },
       });
     }
@@ -157,21 +159,24 @@ export async function POST() {
       message: existingReport ? 'Productivity report updated successfully' : 'Productivity report created successfully',
       data: {
         reportDate: report.reportDate,
-        totalTasks,
-        completedTasks,
-        pendingTasks,
-        inProgressTasks,
-        adhocTasks,
-        averageUrgency,
+        plannedTasksCompletedToday,
+        adhocTasksCompletedToday,
+        totalTasksCompletedToday,
       },
     });
   } catch (error) {
     console.error('Error exporting productivity report:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    });
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to export productivity report',
         message: error instanceof Error ? error.message : 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : String(error)) : undefined,
       },
       { status: 500 }
     );

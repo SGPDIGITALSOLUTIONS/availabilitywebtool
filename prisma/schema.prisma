@@ -161,16 +161,14 @@ model AppUpdate {
 }
 
 model ProductivityReport {
-  id                    String   @id @default(cuid())
-  reportDate            DateTime // Date the report was generated (midnight of that day)
-  csvData               String   // CSV content of the report
-  totalTasks            Int      // Total number of tasks
-  completedTasks        Int      // Number of completed tasks
-  pendingTasks          Int      // Number of pending tasks
-  inProgressTasks       Int      // Number of in-progress tasks
-  adhocTasks            Int      // Number of ad-hoc tasks completed that day
-  averageUrgency        Float    // Average urgency score
-  createdAt             DateTime @default(now())
+  id                        String   @id @default(cuid())
+  reportDate                DateTime // Date the report was generated (midnight of that day)
+  csvData                   String   // CSV content of the report
+  plannedTasksCompletedToday Int      @default(0) // Number of planned (non-adhoc) tasks completed today
+  adhocTasksCompletedToday  Int      @default(0) // Number of ad-hoc tasks completed today
+  totalTasksCompletedToday  Int      @default(0) // Total tasks completed today (planned + adhoc)
+  taskDetails               Json?    // JSON object with pending and completed task lists
+  createdAt                 DateTime @default(now())
   
   @@unique([reportDate])
   @@index([reportDate])
