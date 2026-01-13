@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import Link from 'next/link';
 import { Activity, TrendingUp, ArrowRight, CheckSquare } from 'lucide-react';
 import { AppUpdates } from '@/components/AppUpdates';
+import { TaskStats } from '@/components/TaskStats';
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -26,6 +27,9 @@ export default async function Home() {
 
         {/* App Updates */}
         <AppUpdates />
+
+        {/* Task Statistics */}
+        <TaskStats />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Clinic Availability Dashboard Card */}

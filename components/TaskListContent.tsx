@@ -85,6 +85,7 @@ export function TaskListContent() {
   // Notes editing
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [notesValue, setNotesValue] = useState('');
+  const [taskCount, setTaskCount] = useState<number>(0);
 
   // Load tasks
   const loadTasks = async () => {
@@ -102,7 +103,12 @@ export function TaskListContent() {
         throw new Error(data.error || 'Failed to load tasks');
       }
       
-      setTasks(data.data || []);
+      const loadedTasks = data.data || [];
+      setTasks(loadedTasks);
+      
+      // Count non-completed tasks
+      const activeTasks = loadedTasks.filter((t: Task) => t.status !== 'completed');
+      setTaskCount(activeTasks.length);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
@@ -478,9 +484,16 @@ export function TaskListContent() {
 
       {/* Header */}
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-          Steve Task List
-        </h1>
+        <div className="flex items-center space-x-3 mb-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Steve Task List
+          </h1>
+          {!loading && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand-jade text-white">
+              {taskCount} {taskCount === 1 ? 'task' : 'tasks'}
+            </span>
+          )}
+        </div>
         <p className="text-sm md:text-base text-gray-600">
           Manage your tasks, meetings, and personal items
         </p>
