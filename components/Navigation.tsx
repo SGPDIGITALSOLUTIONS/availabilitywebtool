@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { Activity, TrendingUp, Menu, X, CheckSquare, Shield, Megaphone } from 'lucide-react';
+import { Activity, TrendingUp, Menu, X, CheckSquare, Shield, Megaphone, FileSpreadsheet } from 'lucide-react';
 
 export function Navigation() {
   const pathname = usePathname();
@@ -94,6 +94,18 @@ export function Navigation() {
                 <span>Steve Task List</span>
               </Link>
               
+              <Link
+                href="/productivity"
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
+                  isActive('/productivity')
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <FileSpreadsheet className="h-5 w-5" />
+                <span>Productivity</span>
+              </Link>
+              
               {isUserAdmin && (
                 <>
                   <Link
@@ -173,6 +185,19 @@ export function Navigation() {
             >
               <CheckSquare className="h-5 w-5" />
               <span>Steve Task List</span>
+            </Link>
+            
+            <Link
+              href="/productivity"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors min-h-[44px] mb-2 ${
+                isActive('/productivity')
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FileSpreadsheet className="h-5 w-5" />
+              <span>Productivity</span>
             </Link>
             
             {isUserAdmin && (

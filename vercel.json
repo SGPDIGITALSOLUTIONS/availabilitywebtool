@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/scrape",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/productivity",
+      "schedule": "0 0 * * *"
     }
   ],
   "headers": [

@@ -99,6 +99,7 @@ export async function POST(request: Request) {
       recurrenceDays,
       isCustomMeeting = false,
       isPersonalTask = false,
+      isAdhocTask = false,
       allocatedByUserId,
       allocatedByOverride,
     } = body;
@@ -153,6 +154,7 @@ export async function POST(request: Request) {
         recurrenceDays: recurrenceDays || null,
         isCustomMeeting,
         isPersonalTask,
+        isAdhocTask,
         allocatedByUserId: finalAllocatedByUserId,
         allocatedByOverride: finalAllocatedByOverride,
       },

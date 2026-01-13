@@ -20,6 +20,7 @@ interface Task {
   recurrenceDays?: string | null;
   isCustomMeeting: boolean;
   isPersonalTask: boolean;
+  isAdhocTask: boolean;
   allocatedByUserId?: string | null;
   allocatedByOverride?: string | null;
   allocatedByUser?: {
@@ -43,6 +44,7 @@ export function TaskListContent() {
   const [showAddTask, setShowAddTask] = useState(false);
   const [showAddMeeting, setShowAddMeeting] = useState(false);
   const [showAddPersonalTask, setShowAddPersonalTask] = useState(false);
+  const [showPushToCompleted, setShowPushToCompleted] = useState(false);
   
   // Regular task form
   const [newTask, setNewTask] = useState({
@@ -79,6 +81,13 @@ export function TaskListContent() {
     importance: 3,
     recurrence: 'none',
     recurrenceDays: [] as string[],
+    allocatedByOverride: '',
+  });
+
+  // Push to completed form (adhoc task)
+  const [newAdhocTask, setNewAdhocTask] = useState({
+    title: '',
+    description: '',
     allocatedByOverride: '',
   });
   
@@ -358,6 +367,53 @@ export function TaskListContent() {
     }
   };
 
+  // Handle push to completed (adhoc task)
+  const handlePushToCompleted = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newAdhocTask.title) {
+      setError('Please enter a task title');
+      return;
+    }
+
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newAdhocTask.title,
+          description: newAdhocTask.description || null,
+          startDate: today.toISOString().split('T')[0],
+          deadline: today.toISOString().split('T')[0],
+          status: 'completed',
+          importance: 3,
+          isAdhocTask: true,
+          allocatedByOverride: newAdhocTask.allocatedByOverride || null,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create ad-hoc task');
+      }
+
+      // Reset form
+      setNewAdhocTask({
+        title: '',
+        description: '',
+        allocatedByOverride: '',
+      });
+      setShowPushToCompleted(false);
+      loadTasks();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create ad-hoc task');
+    }
+  };
+
   // Handle status update
   const handleUpdateStatus = async (taskId: string, newStatus: string) => {
     try {
@@ -545,11 +601,25 @@ export function TaskListContent() {
             setShowAddPersonalTask(true);
             setShowAddTask(false);
             setShowAddMeeting(false);
+            setShowPushToCompleted(false);
           }}
           className="flex items-center space-x-2 px-4 py-2 bg-brand-jade text-white rounded-lg hover:bg-opacity-90 transition-colors min-h-[44px]"
         >
           <Plus className="h-4 w-4" />
           <span>Add Personal Task</span>
+        </button>
+        
+        <button
+          onClick={() => {
+            setShowPushToCompleted(true);
+            setShowAddTask(false);
+            setShowAddMeeting(false);
+            setShowAddPersonalTask(false);
+          }}
+          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-opacity-90 transition-colors min-h-[44px]"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Push to Completed</span>
         </button>
       </div>
 
@@ -1038,6 +1108,81 @@ export function TaskListContent() {
               <button
                 type="button"
                 onClick={() => setShowAddPersonalTask(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 min-h-[44px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Push to Completed Form (Ad-hoc Task) */}
+      {showPushToCompleted && (
+        <div className="mb-6 bg-white rounded-lg shadow-md border border-gray-200 p-4 md:p-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Push to Completed</h2>
+              <p className="text-sm text-gray-600 mt-1">Create an ad-hoc task that was completed today</p>
+            </div>
+            <button
+              onClick={() => setShowPushToCompleted(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <form onSubmit={handlePushToCompleted} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Task Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={newAdhocTask.title}
+                onChange={(e) => setNewAdhocTask({ ...newAdhocTask, title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-600 min-h-[44px]"
+                placeholder="What task did you complete?"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                value={newAdhocTask.description}
+                onChange={(e) => setNewAdhocTask({ ...newAdhocTask, description: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-600"
+                placeholder="Optional details about the task"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Allocated By (optional override)
+              </label>
+              <input
+                type="text"
+                placeholder="Leave empty to use your username"
+                value={newAdhocTask.allocatedByOverride}
+                onChange={(e) => setNewAdhocTask({ ...newAdhocTask, allocatedByOverride: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-600 min-h-[44px]"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-opacity-90 min-h-[44px]"
+              >
+                Save as Completed
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPushToCompleted(false)}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 min-h-[44px]"
               >
                 Cancel

@@ -108,6 +108,7 @@ model Task {
   // Task type flags
   isCustomMeeting       Boolean  @default(false)
   isPersonalTask        Boolean  @default(false)
+  isAdhocTask           Boolean  @default(false) // Ad-hoc task that was pushed to completed immediately
   
   // Allocated by fields
   allocatedByUserId     String?
@@ -157,4 +158,22 @@ model AppUpdate {
   @@index([createdAt])
   @@index([expiresAt])
   @@map("app_update")
+}
+
+model ProductivityReport {
+  id                    String   @id @default(cuid())
+  reportDate            DateTime // Date the report was generated (midnight of that day)
+  csvData               String   // CSV content of the report
+  totalTasks            Int      // Total number of tasks
+  completedTasks        Int      // Number of completed tasks
+  pendingTasks          Int      // Number of pending tasks
+  inProgressTasks       Int      // Number of in-progress tasks
+  adhocTasks            Int      // Number of ad-hoc tasks completed that day
+  averageUrgency        Float    // Average urgency score
+  createdAt             DateTime @default(now())
+  
+  @@unique([reportDate])
+  @@index([reportDate])
+  @@index([createdAt])
+  @@map("productivity_report")
 }
