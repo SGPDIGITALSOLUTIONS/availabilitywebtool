@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { calculateSmartScore } from '@/lib/task-calculations';
-import { Plus, Phone, MapPin, User, X } from 'lucide-react';
+import { Plus, Phone, MapPin, User, X, FileSpreadsheet } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -95,6 +95,7 @@ export function TaskListContent() {
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [notesValue, setNotesValue] = useState('');
   const [taskCount, setTaskCount] = useState<number>(0);
+  const [exporting, setExporting] = useState(false);
 
   // Load tasks
   const loadTasks = async () => {
@@ -414,6 +415,32 @@ export function TaskListContent() {
     }
   };
 
+  // Handle export to productivity
+  const handleExportToProductivity = async () => {
+    setExporting(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/productivity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to export to productivity');
+      }
+
+      // Show success message
+      alert(`Productivity report ${data.message.toLowerCase()}. You can view it on the Productivity page.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export to productivity');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Handle status update
   const handleUpdateStatus = async (taskId: string, newStatus: string) => {
     try {
@@ -620,6 +647,15 @@ export function TaskListContent() {
         >
           <Plus className="h-4 w-4" />
           <span>Push to Completed</span>
+        </button>
+        
+        <button
+          onClick={handleExportToProductivity}
+          disabled={exporting}
+          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-opacity-90 transition-colors min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FileSpreadsheet className="h-4 w-4" />
+          <span>{exporting ? 'Exporting...' : 'Export to Productivity'}</span>
         </button>
       </div>
 
