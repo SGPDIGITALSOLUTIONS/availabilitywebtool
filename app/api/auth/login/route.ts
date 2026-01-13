@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function POST(request: Request) {
   try {
@@ -43,6 +44,14 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    // Log sign-in event
+    await logAuditEvent({
+      action: 'login',
+      userId: user.id,
+      username: user.username,
+      details: JSON.stringify({ mustChangePassword: user.mustChangePassword }),
     });
 
     return NextResponse.json({

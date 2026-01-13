@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(request: Request) {
   try {
@@ -163,6 +164,18 @@ export async function POST(request: Request) {
           },
         },
       },
+    });
+
+    // Log task creation
+    await logAuditEvent({
+      action: 'task_created',
+      userId: user.id,
+      username: user.username,
+      details: JSON.stringify({
+        taskId: task.id,
+        title: task.title,
+        taskType: isCustomMeeting ? 'custom_meeting' : isPersonalTask ? 'personal_task' : 'regular_task',
+      }),
     });
 
     return NextResponse.json({

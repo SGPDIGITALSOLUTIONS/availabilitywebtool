@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { ClinicStatus, ShiftData } from '@/lib/clinics';
+import { ClinicStatus, ShiftData, getAllClinics } from '@/lib/clinics';
 import { formatLastUpdated, getStatusColor, getStatusIcon } from '@/lib/utils';
-import { X, Calendar, Users, MapPin } from 'lucide-react';
+import { X, Calendar, Users, MapPin, ExternalLink } from 'lucide-react';
 
 // Define the expected clinic data structure with computed status
 interface ClinicWithStatus extends ClinicStatus {
@@ -23,6 +23,11 @@ export function ClinicDetailsModal({ clinic, isOpen, onClose }: ClinicDetailsMod
   const statusColorClass = getStatusColor(status);
   const statusIcon = getStatusIcon(status);
 
+  // Find the clinic URL from the clinics configuration
+  const allClinics = getAllClinics();
+  const clinicConfig = allClinics.find(c => c.name === clinic.clinic);
+  const rotaUrl = clinicConfig?.url;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] md:max-h-[90vh] overflow-hidden m-2 md:m-0">
@@ -31,9 +36,22 @@ export function ClinicDetailsModal({ clinic, isOpen, onClose }: ClinicDetailsMod
             <MapPin className="h-5 w-5 md:h-6 md:w-6 text-gray-500 flex-shrink-0" />
             <div className="min-w-0 flex-1">
               <h2 className="text-lg md:text-2xl font-bold text-gray-900 truncate">{clinic.clinic}</h2>
-              <div className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium border ${statusColorClass} mt-2`}>
-                <span className="mr-1">{statusIcon}</span>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <div className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium border ${statusColorClass}`}>
+                  <span className="mr-1">{statusIcon}</span>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </div>
+                {rotaUrl && (
+                  <a
+                    href={rotaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-1 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium bg-brand-azure text-white hover:bg-opacity-90 transition-colors min-h-[44px]"
+                  >
+                    <span>View Rota</span>
+                    <ExternalLink className="h-3 w-3 md:h-4 md:w-4" />
+                  </a>
+                )}
               </div>
             </div>
           </div>

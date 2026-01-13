@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(
   request: Request,
@@ -112,6 +113,12 @@ export async function PUT(
       updateData.allocatedByOverride = null;
     }
 
+    // Get task before update for logging
+    const existingTask = await prisma.task.findUnique({
+      where: { id },
+      select: { title: true, notes: true },
+    });
+
     const task = await prisma.task.update({
       where: { id },
       data: updateData,
@@ -123,6 +130,23 @@ export async function PUT(
           },
         },
       },
+    });
+
+    // Log task update - check if notes were added/updated
+    let action = 'task_updated';
+    if (body.notes !== undefined && body.notes && (!existingTask?.notes || body.notes !== existingTask.notes)) {
+      action = 'note_added';
+    }
+
+    await logAuditEvent({
+      action,
+      userId: user.id,
+      username: user.username,
+      details: JSON.stringify({
+        taskId: task.id,
+        title: task.title,
+        updatedFields: Object.keys(updateData),
+      }),
     });
 
     return NextResponse.json({
@@ -157,8 +181,26 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    
+    // Get task before deletion for logging
+    const task = await prisma.task.findUnique({
+      where: { id },
+      select: { id: true, title: true },
+    });
+
     await prisma.task.delete({
       where: { id },
+    });
+
+    // Log task deletion
+    await logAuditEvent({
+      action: 'task_deleted',
+      userId: user.id,
+      username: user.username,
+      details: JSON.stringify({
+        taskId: id,
+        title: task?.title || 'Unknown',
+      }),
     });
 
     return NextResponse.json({

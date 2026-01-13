@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import Link from 'next/link';
 import { Activity, TrendingUp, ArrowRight, CheckSquare } from 'lucide-react';
+import { AppUpdates } from '@/components/AppUpdates';
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -22,6 +23,9 @@ export default async function Home() {
             Manage clinic availability and forecasting in one place
           </p>
         </div>
+
+        {/* App Updates */}
+        <AppUpdates />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Clinic Availability Dashboard Card */}

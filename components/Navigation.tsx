@@ -1,19 +1,39 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { Activity, TrendingUp, Menu, X, CheckSquare } from 'lucide-react';
+import { Activity, TrendingUp, Menu, X, CheckSquare, Shield, Megaphone } from 'lucide-react';
 
 export function Navigation() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isUserAdmin, setIsUserAdmin] = useState(false);
   
   // Don't show navigation on login page
   if (pathname === '/login') {
     return null;
   }
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const response = await fetch('/api/user/current');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            const username = data.user.username?.toLowerCase() || '';
+            setIsUserAdmin(username === 'admin' || username.startsWith('admin'));
+          }
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const isActive = (path: string) => {
     return pathname?.startsWith(path);
@@ -73,6 +93,33 @@ export function Navigation() {
                 <CheckSquare className="h-5 w-5" />
                 <span>Steve Task List</span>
               </Link>
+              
+              {isUserAdmin && (
+                <>
+                  <Link
+                    href="/audit"
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
+                      isActive('/audit')
+                        ? 'bg-red-100 text-red-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Shield className="h-5 w-5" />
+                    <span>Audit Log</span>
+                  </Link>
+                  <Link
+                    href="/admin/updates"
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
+                      isActive('/admin/updates')
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Megaphone className="h-5 w-5" />
+                    <span>App Updates</span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
           
@@ -118,7 +165,7 @@ export function Navigation() {
             <Link
               href="/tasks"
               onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors min-h-[44px] ${
+              className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors min-h-[44px] mb-2 ${
                 isActive('/tasks')
                   ? 'bg-brand-jade bg-opacity-10 text-brand-jade'
                   : 'text-gray-700 hover:bg-gray-100'
@@ -127,6 +174,35 @@ export function Navigation() {
               <CheckSquare className="h-5 w-5" />
               <span>Steve Task List</span>
             </Link>
+            
+            {isUserAdmin && (
+              <>
+                <Link
+                  href="/audit"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors min-h-[44px] mb-2 ${
+                    isActive('/audit')
+                      ? 'bg-red-100 text-red-700'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Shield className="h-5 w-5" />
+                  <span>Audit Log</span>
+                </Link>
+                <Link
+                  href="/admin/updates"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors min-h-[44px] ${
+                    isActive('/admin/updates')
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Megaphone className="h-5 w-5" />
+                  <span>App Updates</span>
+                </Link>
+              </>
+            )}
           </div>
         )}
       </div>

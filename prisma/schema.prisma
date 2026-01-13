@@ -124,3 +124,37 @@ model Task {
   @@index([allocatedByUserId])
   @@map("task")
 }
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  action        String   // e.g., "login", "task_created", "task_deleted", "note_added", etc.
+  userId        String?  // User who performed the action
+  username      String?  // Username for reference (denormalized)
+  details       String?  // Additional details (JSON string or text)
+  ipAddress     String?  // IP address of the user
+  userAgent     String?  // User agent string
+  createdAt     DateTime @default(now())
+  
+  @@index([action])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+model AppUpdate {
+  id            String   @id @default(cuid())
+  title         String
+  content       String   // Markdown or plain text content
+  priority      String   @default("normal") // "low", "normal", "high", "urgent"
+  isActive      Boolean  @default(true)
+  createdBy     String   // User ID who created the update
+  createdByUsername String? // Username for reference
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  expiresAt     DateTime? // Optional expiration date
+  
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@map("app_update")
+}
