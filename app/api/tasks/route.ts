@@ -93,58 +93,44 @@ export async function GET(request: Request) {
       // #endregion
     } catch (clientError: any) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/tasks/route.ts:82',message:'Query with client failed',data:{errorType:clientError?.constructor?.name,errorMessage:clientError?.message,errorCode:clientError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/tasks/route.ts:82',message:'Query with client failed',data:{errorType:clientError?.constructor?.name,errorMessage:clientError?.message,errorCode:clientError?.code,errorString:JSON.stringify(clientError).substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
-      // If client relation fails (column might not exist yet), retry without it
+      // If client relation fails (column might not exist yet), ALWAYS retry without it
+      // This is safer than trying to detect specific error types
       const errorMessage = clientError?.message || String(clientError);
       const errorString = JSON.stringify(clientError);
       console.log('[GET /api/tasks] Client relation failed, retrying without client');
       console.log('[GET /api/tasks] Error message:', errorMessage);
       console.log('[GET /api/tasks] Error string:', errorString);
+      console.log('[GET /api/tasks] Error code:', clientError?.code);
       
-      // Check if it's a column/relation error - check both message and stringified error
-      const isClientError = errorMessage.includes('clientId') || 
-                           errorMessage.includes('client') || 
-                           errorMessage.includes('does not exist') ||
-                           errorString.includes('clientId') ||
-                           errorString.includes('client') ||
-                           errorString.includes('does not exist');
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/tasks/route.ts:98',message:'Error classification',data:{isClientError,errorMessage:errorMessage.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      
-      if (isClientError) {
-        console.log('[GET /api/tasks] Detected clientId/relation error, querying without client relation');
-        try {
-          tasks = await prisma.task.findMany({
-            where,
-            include: {
-              allocatedByUser: {
-                select: {
-                  id: true,
-                  username: true,
-                },
+      // Always retry without client relation - safer approach
+      console.log('[GET /api/tasks] Retrying query without client relation');
+      try {
+        tasks = await prisma.task.findMany({
+          where,
+          include: {
+            allocatedByUser: {
+              select: {
+                id: true,
+                username: true,
               },
             },
-            orderBy: [
-              { deadline: 'asc' },
-            ],
-          });
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/tasks/route.ts:115',message:'Retry without client succeeded',data:{taskCount:tasks.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
-          console.log('[GET /api/tasks] Successfully queried without client relation');
-        } catch (retryError: any) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/tasks/route.ts:116',message:'Retry without client also failed',data:{errorType:retryError?.constructor?.name,errorMessage:retryError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-          console.error('[GET /api/tasks] Retry also failed:', retryError?.message || String(retryError));
-          throw retryError; // Re-throw if retry also fails
-        }
-      } else {
-        // If it's a different error, re-throw it
-        console.error('[GET /api/tasks] Unknown error, re-throwing:', errorMessage);
-        throw clientError;
+          },
+          orderBy: [
+            { deadline: 'asc' },
+          ],
+        });
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/tasks/route.ts:115',message:'Retry without client succeeded',data:{taskCount:tasks.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        console.log('[GET /api/tasks] Successfully queried without client relation');
+      } catch (retryError: any) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8e0cff36-ee07-4b7f-9afb-10474bb0c728',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/tasks/route.ts:116',message:'Retry without client also failed',data:{errorType:retryError?.constructor?.name,errorMessage:retryError?.message,errorCode:retryError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        console.error('[GET /api/tasks] Retry also failed:', retryError?.message || String(retryError));
+        throw retryError; // Re-throw if retry also fails
       }
     }
 

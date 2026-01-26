@@ -13,17 +13,33 @@ export async function GET() {
       );
     }
 
-    // Fetch all clients
-    const clients = await prisma.client.findMany({
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    // Fetch all clients - if table doesn't exist, return empty array
+    try {
+      const clients = await prisma.client.findMany({
+        orderBy: {
+          name: 'asc',
+        },
+      });
 
-    return NextResponse.json({
-      success: true,
-      data: clients,
-    });
+      return NextResponse.json({
+        success: true,
+        data: clients,
+      });
+    } catch (dbError: any) {
+      // If Client table doesn't exist yet, return empty array (not an error)
+      const errorMessage = dbError?.message || String(dbError);
+      if (errorMessage.includes('does not exist') || 
+          errorMessage.includes('Client') || 
+          errorMessage.includes('client')) {
+        console.log('[GET /api/clients] Client table does not exist, returning empty array');
+        return NextResponse.json({
+          success: true,
+          data: [], // Return empty array if table doesn't exist
+        });
+      }
+      // If it's a different error, re-throw it
+      throw dbError;
+    }
   } catch (error) {
     console.error('Error fetching clients:', error);
     return NextResponse.json(
