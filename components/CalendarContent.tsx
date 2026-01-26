@@ -25,18 +25,6 @@ interface Task {
     username: string;
   } | null;
   allocatedByOverride?: string | null;
-  clientId?: string | null;
-  client?: {
-    id: string;
-    name: string;
-    color?: string | null;
-  } | null;
-}
-
-interface Client {
-  id: string;
-  name: string;
-  color?: string | null;
 }
 
 // Color palette for automatic color assignment
@@ -59,10 +47,10 @@ const colors = [
   '#312e81', '#581c87', '#7c2d12', '#6b21a8', '#1e3a8a', '#1e40af',
 ];
 
-// Generate color from ID (for users/clients without custom colors)
+// Generate color from ID (for users/allocated by without custom colors)
 function getColorFromId(id: string | null | undefined, customColor?: string | null): string {
   if (customColor) return customColor;
-  if (!id) return '#6b7280'; // Gray for tasks without client/user
+  if (!id) return '#6b7280'; // Gray for tasks without allocated by
   
   // Hash the ID to get a consistent color
   let hash = 0;
@@ -73,21 +61,21 @@ function getColorFromId(id: string | null | undefined, customColor?: string | nu
   return colors[index];
 }
 
-// Get task color based on client or allocatedByUser
+// Get task color based on allocatedByUser or allocatedByOverride
 function getTaskColor(task: Task): string {
   // Custom meetings use gray
   if (task.isCustomMeeting) {
     return '#6b7280';
   }
   
-  // If task has a client, use client color
-  if (task.client) {
-    return getColorFromId(task.client.id, task.client.color);
-  }
-  
-  // Otherwise use allocatedByUser for color
+  // Use allocatedByUser for color
   if (task.allocatedByUser) {
     return getColorFromId(task.allocatedByUser.id);
+  }
+  
+  // Use allocatedByOverride for color
+  if (task.allocatedByOverride) {
+    return getColorFromId(task.allocatedByOverride);
   }
   
   // Fallback to gray
@@ -96,11 +84,10 @@ function getTaskColor(task: Task): string {
 
 export function CalendarContent() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [sortBy, setSortBy] = useState<'deadline' | 'urgency' | 'client' | 'status'>('deadline');
+  const [sortBy, setSortBy] = useState<'deadline' | 'urgency' | 'allocatedBy' | 'status'>('deadline');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState('');
@@ -168,47 +155,11 @@ export function CalendarContent() {
     loadTasks();
   }, []);
 
-  // Fetch clients (if API exists)
-  useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const response = await fetch('/api/clients');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setClients(data.data || []);
-          }
-        }
-      } catch (error) {
-        // Clients API might not exist yet, that's okay
-        console.log('Clients API not available');
-      }
-    };
-
-    fetchClients();
-  }, []);
-
-  // Create a map of client IDs to client data for quick lookup
-  const clientMap = useMemo(() => {
-    const map = new Map<string, Client>();
-    clients.forEach(client => {
-      map.set(client.id, client);
-    });
-    return map;
-  }, [clients]);
-
-  // Enrich tasks with client data
-  const enrichedTasks = useMemo(() => {
-    return tasks.map(task => ({
-      ...task,
-      client: task.client || (task.clientId ? clientMap.get(task.clientId) : undefined),
-    }));
-  }, [tasks, clientMap]);
 
   // Get tasks for a specific date (appear on startDate or deadline)
   // Excludes completed tasks
   const getTasksForDate = (date: Date): Task[] => {
-    if (!enrichedTasks || enrichedTasks.length === 0) return [];
+    if (!tasks || tasks.length === 0) return [];
     
     // Normalize date to YYYY-MM-DD format (local timezone)
     const year = date.getFullYear();
@@ -216,7 +167,7 @@ export function CalendarContent() {
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     
-    return enrichedTasks.filter(task => {
+    return tasks.filter(task => {
       // Exclude completed tasks
       if (task.status === 'completed') return false;
       
@@ -269,11 +220,11 @@ export function CalendarContent() {
         });
       case 'urgency':
         return tasksWithScores.sort((a, b) => b.smartScore - a.smartScore);
-      case 'client':
+      case 'allocatedBy':
         return tasksWithScores.sort((a, b) => {
-          const clientA = a.client?.name || a.allocatedByUser?.username || a.allocatedByOverride || 'ZZZ';
-          const clientB = b.client?.name || b.allocatedByUser?.username || b.allocatedByOverride || 'ZZZ';
-          return clientA.localeCompare(clientB);
+          const allocatedA = a.allocatedByUser?.username || a.allocatedByOverride || 'ZZZ';
+          const allocatedB = b.allocatedByUser?.username || b.allocatedByOverride || 'ZZZ';
+          return allocatedA.localeCompare(allocatedB);
         });
       case 'status':
         const statusOrder = { pending: 0, in_progress: 1, completed: 2 };
@@ -289,7 +240,7 @@ export function CalendarContent() {
   const selectedDateTasks = useMemo(() => {
     if (!selectedDate) return [];
     return sortTasks(getTasksForDate(selectedDate));
-  }, [selectedDate, enrichedTasks, sortBy]);
+  }, [selectedDate, tasks, sortBy]);
 
   // Handle status update
   const handleUpdateStatus = async (taskId: string, newStatus: string) => {
@@ -414,45 +365,41 @@ export function CalendarContent() {
     return deadlineDate < today;
   };
 
-  // Get unique clients/users for legend (must be before conditional return)
-  const uniqueClients = useMemo(() => {
-    const clientSet = new Map<string, { name: string; color: string }>();
+  // Get unique allocated by users/overrides for legend (must be before conditional return)
+  const uniqueAllocatedBy = useMemo(() => {
+    const allocatedSet = new Map<string, { name: string; color: string }>();
     
-    enrichedTasks.forEach(task => {
+    tasks.forEach(task => {
       if (task.isCustomMeeting) {
-        clientSet.set('custom', { name: 'Custom Meeting', color: '#6b7280' });
+        allocatedSet.set('custom', { name: 'Custom Meeting', color: '#6b7280' });
         return;
       }
       
-      if (task.client) {
-        const color = getColorFromId(task.client.id, task.client.color);
-        clientSet.set(task.client.id, { name: task.client.name, color });
-      } else if (task.allocatedByUser) {
+      if (task.allocatedByUser) {
         const color = getColorFromId(task.allocatedByUser.id);
-        clientSet.set(task.allocatedByUser.id, { 
+        allocatedSet.set(task.allocatedByUser.id, { 
           name: task.allocatedByUser.username, 
           color 
         });
       } else if (task.allocatedByOverride) {
         const color = getColorFromId(task.allocatedByOverride);
-        clientSet.set(task.allocatedByOverride, { 
+        allocatedSet.set(task.allocatedByOverride, { 
           name: task.allocatedByOverride, 
           color 
         });
       }
     });
     
-    return Array.from(clientSet.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [enrichedTasks]);
+    return Array.from(allocatedSet.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks]);
 
   // Debug: Log task counts (must be before conditional return)
   useEffect(() => {
     if (tasks.length > 0) {
       console.log('Total tasks loaded:', tasks.length);
-      console.log('Enriched tasks:', enrichedTasks.length);
-      console.log('Sample task:', enrichedTasks[0]);
+      console.log('Sample task:', tasks[0]);
     }
-  }, [tasks.length, enrichedTasks.length]);
+  }, [tasks.length]);
 
   // Calendar helpers
   const year = currentDate.getFullYear();
@@ -589,7 +536,7 @@ export function CalendarContent() {
             >
               <option value="deadline">Deadline</option>
               <option value="urgency">Urgency</option>
-              <option value="client">Client</option>
+              <option value="allocatedBy">Allocated By</option>
               <option value="status">Status</option>
             </select>
           </div>
@@ -689,7 +636,7 @@ export function CalendarContent() {
             <div className="space-y-3">
               {selectedDateTasks.map((task) => {
                 const color = getTaskColor(task);
-                const clientName = task.client?.name || 
+                const allocatedByName = 
                   task.allocatedByUser?.username || 
                   task.allocatedByOverride || 
                   'Unassigned';
@@ -737,7 +684,7 @@ export function CalendarContent() {
                     
                     <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                       <div>
-                        <span className="font-medium">Client:</span> {clientName}
+                        <span className="font-medium">Allocated By:</span> {allocatedByName}
                       </div>
                       <div>
                         <span className="font-medium">Deadline:</span>{' '}
@@ -1016,18 +963,18 @@ export function CalendarContent() {
         </div>
       )}
 
-      {/* Client Color Legend */}
-      {uniqueClients.length > 0 && (
+      {/* Allocated By Color Legend */}
+      {uniqueAllocatedBy.length > 0 && (
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 md:p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Client Colors</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Allocated By Colors</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {uniqueClients.map((client, index) => (
+            {uniqueAllocatedBy.map((allocated, index) => (
               <div key={index} className="flex items-center gap-2">
                 <div
                   className="w-4 h-4 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: client.color }}
+                  style={{ backgroundColor: allocated.color }}
                 />
-                <span className="text-sm text-gray-700">{client.name}</span>
+                <span className="text-sm text-gray-700">{allocated.name}</span>
               </div>
             ))}
           </div>
