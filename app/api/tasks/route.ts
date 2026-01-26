@@ -80,22 +80,48 @@ export async function GET(request: Request) {
         ],
       });
     } catch (clientError: any) {
-      // If client relation fails (table might not exist), retry without it
-      console.log('[GET /api/tasks] Client relation failed, retrying without client:', clientError.message);
-      tasks = await prisma.task.findMany({
-        where,
-        include: {
-          allocatedByUser: {
-            select: {
-              id: true,
-              username: true,
+      // If client relation fails (column might not exist yet), retry without it
+      const errorMessage = clientError?.message || String(clientError);
+      const errorString = JSON.stringify(clientError);
+      console.log('[GET /api/tasks] Client relation failed, retrying without client');
+      console.log('[GET /api/tasks] Error message:', errorMessage);
+      console.log('[GET /api/tasks] Error string:', errorString);
+      
+      // Check if it's a column/relation error - check both message and stringified error
+      const isClientError = errorMessage.includes('clientId') || 
+                           errorMessage.includes('client') || 
+                           errorMessage.includes('does not exist') ||
+                           errorString.includes('clientId') ||
+                           errorString.includes('client') ||
+                           errorString.includes('does not exist');
+      
+      if (isClientError) {
+        console.log('[GET /api/tasks] Detected clientId/relation error, querying without client relation');
+        try {
+          tasks = await prisma.task.findMany({
+            where,
+            include: {
+              allocatedByUser: {
+                select: {
+                  id: true,
+                  username: true,
+                },
+              },
             },
-          },
-        },
-        orderBy: [
-          { deadline: 'asc' },
-        ],
-      });
+            orderBy: [
+              { deadline: 'asc' },
+            ],
+          });
+          console.log('[GET /api/tasks] Successfully queried without client relation');
+        } catch (retryError: any) {
+          console.error('[GET /api/tasks] Retry also failed:', retryError?.message || String(retryError));
+          throw retryError; // Re-throw if retry also fails
+        }
+      } else {
+        // If it's a different error, re-throw it
+        console.error('[GET /api/tasks] Unknown error, re-throwing:', errorMessage);
+        throw clientError;
+      }
     }
 
     console.log('[GET /api/tasks] SUCCESS: Found', tasks.length, 'tasks');
