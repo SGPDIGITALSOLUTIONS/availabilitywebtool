@@ -116,8 +116,16 @@ export async function PUT(
     // Get task before update for logging
     const existingTask = await prisma.task.findUnique({
       where: { id },
-      select: { title: true, notes: true },
+      select: { title: true, notes: true, status: true },
     });
+
+    // Set completedAt timestamp when status changes to 'completed'
+    if (body.status === 'completed' && existingTask?.status !== 'completed') {
+      updateData.completedAt = new Date();
+    } else if (body.status !== 'completed' && body.status !== undefined) {
+      // Clear completedAt if status changes away from completed
+      updateData.completedAt = null;
+    }
 
     const task = await prisma.task.update({
       where: { id },

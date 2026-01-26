@@ -99,6 +99,7 @@ export function TaskListContent() {
 
   // Load tasks
   const loadTasks = async () => {
+    console.log('[TaskList] loadTasks called');
     setLoading(true);
     setError(null);
     try {
@@ -106,23 +107,50 @@ export function TaskListContent() {
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (deadlineFilter !== 'all') params.append('deadline', deadlineFilter);
       
+      console.log('[TaskList] Fetching /api/tasks with params:', params.toString());
       const response = await fetch(`/api/tasks?${params.toString()}`);
-      const data = await response.json();
+      console.log('[TaskList] Response status:', response.status, response.statusText);
+      console.log('[TaskList] Response ok:', response.ok);
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to load tasks');
+        const errorText = await response.text();
+        console.error('[TaskList] Response not OK. Status:', response.status);
+        console.error('[TaskList] Response body:', errorText);
+        throw new Error(`Failed to load tasks: ${response.status} ${response.statusText}`);
       }
       
-      const loadedTasks = data.data || [];
-      setTasks(loadedTasks);
+      const data = await response.json();
+      console.log('[TaskList] Response data:', {
+        success: data.success,
+        hasData: !!data.data,
+        dataLength: data.data?.length || 0,
+        error: data.error,
+        message: data.message,
+      });
       
-      // Count non-completed tasks
-      const activeTasks = loadedTasks.filter((t: Task) => t.status !== 'completed');
-      setTaskCount(activeTasks.length);
+      if (data.success) {
+        const loadedTasks = data.data || [];
+        console.log('[TaskList] SUCCESS: Loaded', loadedTasks.length, 'tasks');
+        setTasks(loadedTasks);
+        
+        // Count non-completed tasks
+        const activeTasks = loadedTasks.filter((t: Task) => t.status !== 'completed');
+        setTaskCount(activeTasks.length);
+      } else {
+        console.error('[TaskList] API returned success=false:', data);
+        setError(data.error || data.message || 'Failed to load tasks');
+      }
     } catch (err) {
+      console.error('[TaskList] ERROR: Exception caught while fetching tasks');
+      console.error('[TaskList] Error type:', err instanceof Error ? err.constructor.name : typeof err);
+      console.error('[TaskList] Error message:', err instanceof Error ? err.message : String(err));
+      if (err instanceof Error) {
+        console.error('[TaskList] Error stack:', err.stack);
+      }
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
       setLoading(false);
+      console.log('[TaskList] loadTasks completed, loading set to false');
     }
   };
 

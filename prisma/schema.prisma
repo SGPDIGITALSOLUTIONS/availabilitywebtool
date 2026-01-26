@@ -50,6 +50,34 @@ model User {
   @@map("user")
 }
 
+model Client {
+  id                        String   @id @default(cuid())
+  name                      String
+  startDate                 DateTime
+  endDate                   DateTime
+  hours                     Float
+  rate                      Float
+  frequency                 String   // "weekly" | "monthly"
+  email                     String?
+  phone                     String?
+  company                   String?
+  contractType              String?
+  paymentTerms              String?
+  notes                     String?
+  specialRequirements       String?
+  communicationPreference   String?
+  onboardingDocument        String?
+  color                     String?  // Hex color code (e.g., '#271d7a')
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  
+  // Relationships
+  tasks                     Task[]
+  
+  @@index([name])
+  @@map("client")
+}
+
 model Forecast {
   id              String   @id @default(cuid())
   name            String   // Forecast name (required)
@@ -114,15 +142,22 @@ model Task {
   allocatedByUserId     String?
   allocatedByOverride   String?  // Manual override text
   
+  // Client relationship (optional)
+  clientId              String?
+  
   // Relationships
   allocatedByUser       User?    @relation("AllocatedByUser", fields: [allocatedByUserId], references: [id], onDelete: SetNull)
+  client                 Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   
+  completedAt           DateTime? // Date and time when task was marked as completed
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   
   @@index([status])
   @@index([deadline])
   @@index([allocatedByUserId])
+  @@index([completedAt])
+  @@index([clientId])
   @@map("task")
 }
 

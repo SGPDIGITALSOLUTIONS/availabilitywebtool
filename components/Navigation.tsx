@@ -4,19 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { Activity, TrendingUp, Menu, X, CheckSquare, Shield, Megaphone, FileSpreadsheet } from 'lucide-react';
+import { Activity, TrendingUp, Menu, X, CheckSquare, Shield, Megaphone, FileSpreadsheet, Calendar } from 'lucide-react';
 
 export function Navigation() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   
-  // Don't show navigation on login page
-  if (pathname === '/login') {
-    return null;
-  }
-
-  // Check if user is admin
+  // Check if user is admin (must be before any early returns)
   useEffect(() => {
     const checkAdmin = async () => {
       try {
@@ -34,6 +29,11 @@ export function Navigation() {
     };
     checkAdmin();
   }, []);
+
+  // Don't show navigation on login page
+  if (pathname === '/login') {
+    return null;
+  }
 
   const isActive = (path: string) => {
     return pathname?.startsWith(path);
@@ -92,6 +92,18 @@ export function Navigation() {
               >
                 <CheckSquare className="h-5 w-5" />
                 <span>Steve Task List</span>
+              </Link>
+              
+              <Link
+                href="/calendar"
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
+                  isActive('/calendar')
+                    ? 'bg-purple-100 text-purple-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Calendar className="h-5 w-5" />
+                <span>Calendar</span>
               </Link>
               
               <Link
@@ -185,6 +197,19 @@ export function Navigation() {
             >
               <CheckSquare className="h-5 w-5" />
               <span>Steve Task List</span>
+            </Link>
+            
+            <Link
+              href="/calendar"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors min-h-[44px] mb-2 ${
+                isActive('/calendar')
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Calendar className="h-5 w-5" />
+              <span>Calendar</span>
             </Link>
             
             <Link

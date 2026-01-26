@@ -4,25 +4,34 @@ import { getCurrentUser } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
 
 export async function GET(request: Request) {
+  console.log('[GET /api/tasks] Request received');
+  
   try {
+    console.log('[GET /api/tasks] Checking authentication...');
     const user = await getCurrentUser();
     
     if (!user) {
+      console.log('[GET /api/tasks] ERROR: Unauthorized - no user found');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
+    console.log('[GET /api/tasks] User authenticated:', user.username);
+
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get('status');
     const deadlineFilter = searchParams.get('deadline');
+
+    console.log('[GET /api/tasks] Query params:', { statusFilter, deadlineFilter });
 
     // Build where clause
     const where: any = {};
 
     if (statusFilter && statusFilter !== 'all') {
       where.status = statusFilter;
+      console.log('[GET /api/tasks] Applied status filter:', statusFilter);
     }
 
     if (deadlineFilter && deadlineFilter !== 'all') {
@@ -32,35 +41,87 @@ export async function GET(request: Request) {
       if (deadlineFilter === 'overdue') {
         where.deadline = { lt: today };
         where.status = { not: 'completed' };
+        console.log('[GET /api/tasks] Applied overdue filter');
       } else if (deadlineFilter === 'upcoming') {
         where.deadline = { gte: today };
         where.status = { not: 'completed' };
+        console.log('[GET /api/tasks] Applied upcoming filter');
       } else if (deadlineFilter === 'past') {
         where.deadline = { lt: today };
+        console.log('[GET /api/tasks] Applied past filter');
       }
     }
 
-    const tasks = await prisma.task.findMany({
-      where,
-      include: {
-        allocatedByUser: {
-          select: {
-            id: true,
-            username: true,
+    console.log('[GET /api/tasks] Where clause:', JSON.stringify(where, null, 2));
+    console.log('[GET /api/tasks] Querying database...');
+
+    let tasks;
+    try {
+      // Try with client relation first
+      tasks = await prisma.task.findMany({
+        where,
+        include: {
+          allocatedByUser: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+          client: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+            },
           },
         },
-      },
-      orderBy: [
-        { deadline: 'asc' },
-      ],
-    });
+        orderBy: [
+          { deadline: 'asc' },
+        ],
+      });
+    } catch (clientError: any) {
+      // If client relation fails (table might not exist), retry without it
+      console.log('[GET /api/tasks] Client relation failed, retrying without client:', clientError.message);
+      tasks = await prisma.task.findMany({
+        where,
+        include: {
+          allocatedByUser: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+        },
+        orderBy: [
+          { deadline: 'asc' },
+        ],
+      });
+    }
+
+    console.log('[GET /api/tasks] SUCCESS: Found', tasks.length, 'tasks');
+    if (tasks.length > 0) {
+      console.log('[GET /api/tasks] Sample task:', {
+        id: tasks[0].id,
+        title: tasks[0].title,
+        startDate: tasks[0].startDate,
+        deadline: tasks[0].deadline,
+        status: tasks[0].status,
+      });
+    }
 
     return NextResponse.json({
       success: true,
       data: tasks,
     });
   } catch (error) {
-    console.error('Error fetching tasks:', error);
+    console.error('[GET /api/tasks] ERROR: Failed to fetch tasks');
+    console.error('[GET /api/tasks] Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('[GET /api/tasks] Error message:', error instanceof Error ? error.message : String(error));
+    if (error instanceof Error) {
+      console.error('[GET /api/tasks] Error stack:', error.stack);
+    }
+    console.error('[GET /api/tasks] Full error object:', error);
+    
     return NextResponse.json(
       {
         success: false,
@@ -157,6 +218,7 @@ export async function POST(request: Request) {
         isAdhocTask,
         allocatedByUserId: finalAllocatedByUserId,
         allocatedByOverride: finalAllocatedByOverride,
+        completedAt: status === 'completed' ? new Date() : null, // Set completion timestamp if task is created as completed
       },
       include: {
         allocatedByUser: {

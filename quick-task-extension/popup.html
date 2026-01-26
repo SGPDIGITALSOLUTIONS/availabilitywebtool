@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Task</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Quick Task</h2>
+      <p class="subtitle">Add tasks to your productivity tracker</p>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="adhoc">Ad-hoc Task</button>
+      <button class="tab-btn" data-tab="normal">Normal Task</button>
+    </div>
+    
+    <!-- Ad-hoc Task Form -->
+    <form id="adhocForm" class="task-form active">
+      <div class="form-group">
+        <label for="adhocTitle">What did you complete? *</label>
+        <input 
+          type="text" 
+          id="adhocTitle" 
+          placeholder="e.g., Reviewed quarterly report"
+          required
+          autofocus
+        >
+      </div>
+      
+      <div class="form-group">
+        <label for="adhocDesc">Description (optional)</label>
+        <textarea 
+          id="adhocDesc" 
+          placeholder="Additional details..."
+          rows="3"
+        ></textarea>
+      </div>
+      
+      <button type="submit" id="adhocSubmitBtn" class="submit-btn submit-btn-adhoc">
+        <span class="btn-text">Save as Completed</span>
+        <span class="btn-loader" style="display: none;">⏳ Adding...</span>
+      </button>
+    </form>
+    
+    <!-- Normal Task Form -->
+    <form id="normalForm" class="task-form">
+      <div class="form-group">
+        <label for="normalTitle">Task Title *</label>
+        <input 
+          type="text" 
+          id="normalTitle" 
+          placeholder="e.g., Review project proposal"
+          required
+        >
+      </div>
+      
+      <div class="form-group">
+        <label for="normalDesc">Description (optional)</label>
+        <textarea 
+          id="normalDesc" 
+          placeholder="Additional details..."
+          rows="3"
+        ></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label for="normalDeadline">Deadline *</label>
+        <input 
+          type="date" 
+          id="normalDeadline" 
+          required
+        >
+      </div>
+      
+      <div class="form-group">
+        <label for="normalImportance">Importance (1-5)</label>
+        <select id="normalImportance">
+          <option value="1">1 - Low</option>
+          <option value="2">2</option>
+          <option value="3" selected>3 - Medium</option>
+          <option value="4">4</option>
+          <option value="5">5 - High</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="normalStatus">Status</label>
+        <select id="normalStatus">
+          <option value="pending" selected>Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      
+      <button type="submit" id="normalSubmitBtn" class="submit-btn submit-btn-normal">
+        <span class="btn-text">Create Task</span>
+        <span class="btn-loader" style="display: none;">⏳ Adding...</span>
+      </button>
+    </form>
+    
+    <!-- API URL Configuration (shown at bottom) -->
+    <div class="api-config">
+      <details>
+        <summary>API Configuration</summary>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="apiUrl">API URL</label>
+          <input 
+            type="text" 
+            id="apiUrl" 
+            placeholder="https://availabilitywebtool.vercel.app"
+            value="https://availabilitywebtool.vercel.app"
+          >
+          <small>Change if using a different URL</small>
+        </div>
+      </details>
+    </div>
+    
+    <div id="status" class="status-message"></div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

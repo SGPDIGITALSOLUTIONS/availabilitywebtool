@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Icon Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .canvas-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      margin: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #059669;
+    }
+    .instructions {
+      background: #f3f4f6;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Extension Icon Generator</h1>
+  <div class="instructions">
+    <p><strong>Instructions:</strong></p>
+    <ol>
+      <li>Click "Generate Icons" to create placeholder icons</li>
+      <li>Right-click each canvas and "Save image as..."</li>
+      <li>Save as: icon16.png, icon48.png, icon128.png</li>
+      <li>Place them in the icons/ folder</li>
+    </ol>
+  </div>
+  
+  <button onclick="generateIcons()">Generate Icons</button>
+  
+  <div class="canvas-container">
+    <div>
+      <h3>16x16</h3>
+      <canvas id="icon16" width="16" height="16"></canvas>
+    </div>
+    <div>
+      <h3>48x48</h3>
+      <canvas id="icon48" width="48" height="48"></canvas>
+    </div>
+    <div>
+      <h3>128x128</h3>
+      <canvas id="icon128" width="128" height="128"></canvas>
+    </div>
+  </div>
+
+  <script>
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, size, size);
+      
+      // Draw green background circle
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2 - 2, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Draw white checkmark
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(2, size / 8);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      const checkSize = size * 0.4;
+      const centerX = size / 2;
+      const centerY = size / 2;
+      
+      ctx.beginPath();
+      ctx.moveTo(centerX - checkSize * 0.3, centerY);
+      ctx.lineTo(centerX - checkSize * 0.1, centerY + checkSize * 0.3);
+      ctx.lineTo(centerX + checkSize * 0.3, centerY - checkSize * 0.2);
+      ctx.stroke();
+    }
+    
+    function generateIcons() {
+      drawIcon(document.getElementById('icon16'), 16);
+      drawIcon(document.getElementById('icon48'), 48);
+      drawIcon(document.getElementById('icon128'), 128);
+      
+      alert('Icons generated! Right-click each canvas and save as PNG files.');
+    }
+    
+    // Auto-generate on load
+    window.onload = generateIcons;
+  </script>
+</body>
+</html>

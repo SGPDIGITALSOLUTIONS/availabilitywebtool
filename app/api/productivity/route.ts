@@ -70,11 +70,12 @@ export async function POST() {
     const todayEnd = new Date(today);
     todayEnd.setHours(23, 59, 59, 999);
     
-    // Filter tasks completed today
+    // Filter tasks completed today - use completedAt timestamp if available, otherwise fall back to updatedAt
     const tasksCompletedToday = allTasks.filter(task => {
       if (task.status !== 'completed') return false;
-      const taskDate = new Date(task.updatedAt);
-      return taskDate >= todayStart && taskDate <= todayEnd;
+      // Use completedAt if available, otherwise use updatedAt as fallback
+      const completionDate = task.completedAt ? new Date(task.completedAt) : new Date(task.updatedAt);
+      return completionDate >= todayStart && completionDate <= todayEnd;
     });
 
     // Calculate metrics
@@ -100,7 +101,7 @@ export async function POST() {
       importance: t.importance,
       isAdhoc: t.isAdhocTask,
       allocatedBy: t.allocatedByUser?.username || t.allocatedByOverride || 'Unknown',
-      completedAt: t.updatedAt.toISOString(),
+      completedAt: t.completedAt ? t.completedAt.toISOString() : t.updatedAt.toISOString(), // Use completedAt if available
     }));
 
     // Store task details as JSON

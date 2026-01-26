@@ -77,11 +77,12 @@ export function ForecastingTable({
   };
 
   // Calculate GOS 1 (NHS) revenue for a clinic
-  // Formula: Target Clinics × Target Tests × NHS Eligible % × NHS Test Value
+  // Formula: Total Tests × NHS Eligible % × NHS Test Value
   const calculateGOS1 = (clinicName: string): number => {
     const clinics = targetClinics[clinicName] || 0;
     const tests = targetTests[clinicName] || 0;
-    return clinics * tests * (variables.nhsEligiblePercent / 100) * variables.nhsTestValue;
+    const totalTests = clinics * tests;
+    return totalTests * (variables.nhsEligiblePercent / 100) * variables.nhsTestValue;
   };
 
   // Calculate GOS 3 revenue for a clinic
@@ -102,6 +103,11 @@ export function ForecastingTable({
     runningClinics: clinics.reduce((sum, clinic) => sum + getRunningClinics(clinic.name), 0),
     targetClinics: clinics.reduce((sum, clinic) => sum + (targetClinics[clinic.name] || 0), 0),
     targetTests: clinics.reduce((sum, clinic) => sum + (targetTests[clinic.name] || 0), 0),
+    totalTests: clinics.reduce((sum, clinic) => {
+      const clinicCount = targetClinics[clinic.name] || 0;
+      const tests = targetTests[clinic.name] || 0;
+      return sum + (clinicCount * tests);
+    }, 0),
     gos1: clinics.reduce((sum, clinic) => sum + calculateGOS1(clinic.name), 0),
     gos3: clinics.reduce((sum, clinic) => sum + calculateGOS3(clinic.name), 0),
     totalGOS: clinics.reduce((sum, clinic) => sum + calculateTotalGOS(clinic.name), 0),
@@ -125,6 +131,9 @@ export function ForecastingTable({
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Target Tests per Clinic
               </th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Total Tests
+              </th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
                 GOS 1 Expected
               </th>
@@ -141,6 +150,7 @@ export function ForecastingTable({
               const runningClinics = getRunningClinics(clinic.name);
               const clinicTargetClinics = targetClinics[clinic.name] || 0;
               const clinicTargetTests = targetTests[clinic.name] || 0;
+              const totalTests = clinicTargetClinics * clinicTargetTests;
               const gos1 = calculateGOS1(clinic.name);
               const gos3 = calculateGOS3(clinic.name);
               const totalGOS = calculateTotalGOS(clinic.name);
@@ -173,6 +183,9 @@ export function ForecastingTable({
                       placeholder="0"
                     />
                   </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-900">
+                    {formatNumber(totalTests)}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-900 bg-blue-50">
                     {formatCurrency(gos1)}
                   </td>
@@ -199,6 +212,9 @@ export function ForecastingTable({
               </td>
               <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-900">
                 {formatNumber(totals.targetTests)}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-900">
+                {formatNumber(totals.totalTests)}
               </td>
               <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-900 bg-blue-100">
                 {formatCurrency(totals.gos1)}
