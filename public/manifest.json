@@ -28,19 +28,7 @@
       "name": "Dashboard",
       "short_name": "Dashboard",
       "description": "View clinic availability dashboard",
-      "url": "/dashboard",
-      "icons": [
-        {
-          "src": "/assets/Vision_Care_identifier_RGB (2).jpg",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Forecasting",
-      "short_name": "Forecast",
-      "description": "View forecasting data",
-      "url": "/forecasting",
+      "url": "/",
       "icons": [
         {
           "src": "/assets/Vision_Care_identifier_RGB (2).jpg",

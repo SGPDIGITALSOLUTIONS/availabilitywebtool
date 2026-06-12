@@ -2,8 +2,6 @@
 const CACHE_NAME = 'vision-care-portal-v1';
 const urlsToCache = [
   '/',
-  '/dashboard',
-  '/forecasting',
   '/login',
   '/assets/Vision_Care_RGB.gif',
   '/manifest.json'

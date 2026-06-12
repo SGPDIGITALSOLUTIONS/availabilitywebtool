@@ -27,13 +27,6 @@ export const clinics: Record<string, Clinic> = {
     url: 'https://vchp.my.salesforce-sites.com/rota?clinicId=7014J00000099sc',
     timezone: 'Europe/London'
   },
-  bristol: {
-    id: 'bristol',
-    name: 'Bristol',
-    location: 'Bristol',
-    url: 'https://vchp.my.salesforce-sites.com/rota?clinicId=7014J000000QupC',
-    timezone: 'Europe/London'
-  },
   manchester: {
     id: 'manchester',
     name: 'Manchester',

@@ -315,12 +315,18 @@ export function Dashboard() {
 
   const statusCounts = getStatusCounts();
   
+  // Clinics excluded from the summary totals (cards remain visible)
+  const EXCLUDED_FROM_TOTALS = ['exeter', 'gloucester', 'plymouth'];
+  const statsClinicData = filteredClinicData.filter(
+    clinic => !EXCLUDED_FROM_TOTALS.some(name => clinic.clinic.toLowerCase().includes(name))
+  );
+
   // Calculate new dashboard metrics
   // 1. Total scraped shifts (Clinic # Potential)
-  const totalScrapedShifts = filteredClinicData.reduce((sum, clinic) => sum + (clinic.shifts?.length || 0), 0);
+  const totalScrapedShifts = statsClinicData.reduce((sum, clinic) => sum + (clinic.shifts?.length || 0), 0);
   
   // 2. Clinics Running as % (functioning shifts / total shifts)
-  const totalFunctioningShifts = filteredClinicData.reduce((sum, clinic) => {
+  const totalFunctioningShifts = statsClinicData.reduce((sum, clinic) => {
     return sum + (clinic.shifts?.filter(shift => {
       const roles = shift.jobRoles || [];
       const hasOptometrist = roles.some(role => role.toLowerCase().includes('optometrist'));
@@ -331,7 +337,7 @@ export function Dashboard() {
   const clinicsRunningPercentage = totalScrapedShifts > 0 ? Math.round((totalFunctioningShifts / totalScrapedShifts) * 100) : 0;
   
   // 3. Total optometrists required
-  const totalOptometristsRequired = filteredClinicData.reduce((sum, clinic) => {
+  const totalOptometristsRequired = statsClinicData.reduce((sum, clinic) => {
     const requiredOptometrists = clinic.shifts?.length || 0;
     let assignedOptometrists = 0;
     clinic.shifts?.forEach(shift => {
@@ -343,7 +349,7 @@ export function Dashboard() {
   }, 0);
   
   // 4. Total assistants required
-  const totalAssistantsRequired = filteredClinicData.reduce((sum, clinic) => {
+  const totalAssistantsRequired = statsClinicData.reduce((sum, clinic) => {
     const requiredAssistants = clinic.shifts?.length || 0;
     let assignedAssistants = 0;
     clinic.shifts?.forEach(shift => {
